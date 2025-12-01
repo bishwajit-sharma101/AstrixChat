@@ -62,3 +62,16 @@ body{ background:var(--bg-900); color:var(--text-100); font-family: Inter, syste
 *::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* --- Language Dropdown Fixes --- */
+
+/* Force cursor pointer on all buttons */
+button {
+    cursor: pointer;
+}
+
+/* Ensure the Language Dropdown list items are always above everything else */
+.language-dropdown-menu button {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}

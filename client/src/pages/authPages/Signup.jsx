@@ -119,7 +119,7 @@ const SimpleSignupForm = () => {
 
         <div className="text-center text-sm">
           <a
-            href="./login"
+            href="/signin"
             className="font-medium text-indigo-600 hover:text-indigo-500"
           >
             Already have an account? Sign In

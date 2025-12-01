@@ -1,3 +1,4 @@
+// src/components/chat/ChatWindow.jsx
 "use client";
 
 import React, { useState } from "react";
@@ -11,6 +12,7 @@ const LanguageDropdown = ({ targetLang, setTargetLang }) => {
   const [open, setOpen] = useState(false);
 
   const languages = [
+    { label: "None (Original)", code: "none" },
     { label: "English", code: "en" },
     { label: "Hindi", code: "hi" },
     { label: "Spanish", code: "es" },
@@ -20,18 +22,12 @@ const LanguageDropdown = ({ targetLang, setTargetLang }) => {
   ];
 
   const handleClick = (code) => {
-    console.log("Selected:", code); // DEBUG: should log for every click
     setTargetLang(code);
     setOpen(false);
   };
 
-
-useEffect(() => {
-  console.log("Current targetLang changed:", targetLang);
-}, [targetLang]);
-
   return (
-    <div className="relative z-50 pointer-events-auto">
+    <div className="relative z-50">
       <button
         onClick={() => setOpen(!open)}
         className="px-3 py-2 text-sm rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white flex items-center gap-2 transition-all"
@@ -43,12 +39,12 @@ useEffect(() => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-[#0f0f17] border border-white/10 rounded-xl shadow-2xl py-1">
+        <div className="absolute right-0 mt-2 w-40 bg-[#0f0f17] border border-white/10 rounded-xl shadow-2xl py-1 z-[100] language-dropdown-menu">
           {languages.map((l) => (
             <button
               key={l.code}
               onClick={() => handleClick(l.code)}
-              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+              className={`w-full text-left px-4 py-2 text-sm transition-colors cursor-pointer ${
                 targetLang === l.code
                   ? "bg-brand-500/20 text-brand-300"
                   : "text-slate-400 hover:bg-white/5 hover:text-white"
@@ -65,7 +61,7 @@ useEffect(() => {
 
 // ---------------- HEADER ----------------
 const GlassHeader = ({ activeChat, targetLang, setTargetLang }) => (
-  <div className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-white/[0.02] backdrop-blur-md">
+  <div className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-white/[0.02] backdrop-blur-md relative z-20">
     <div className="flex items-center gap-4">
       <div className="relative">
         <img
@@ -89,7 +85,7 @@ const GlassHeader = ({ activeChat, targetLang, setTargetLang }) => (
       </div>
     </div>
 
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 relative z-30">
       <LanguageDropdown targetLang={targetLang} setTargetLang={setTargetLang} />
 
       <div className="h-8 w-[1px] bg-white/10 mx-1"></div>
@@ -108,8 +104,8 @@ const GlassHeader = ({ activeChat, targetLang, setTargetLang }) => (
 );
 
 // ---------------- MAIN CHAT WINDOW ----------------
-export default function ChatWindow({ chat, onSend, aiProcessing }) {
-  const [targetLang, setTargetLang] = useState("en"); // ALWAYS use codes
+export default function ChatWindow({ chat, onSend, aiProcessing, currentUser }) {
+  const [targetLang, setTargetLang] = useState("none"); // ALWAYS use codes
 
   if (!chat)
     return (
@@ -125,9 +121,9 @@ export default function ChatWindow({ chat, onSend, aiProcessing }) {
     <div className="flex-1 flex flex-col relative z-0">
       <GlassHeader activeChat={chat} targetLang={targetLang} setTargetLang={setTargetLang} />
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 relative">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 relative z-[-1]">
         <div className="max-w-4xl mx-auto py-6 flex flex-col gap-6">
-          <MessageList messages={chat.messages} />
+          <MessageList messages={chat.messages} currentUser={currentUser} targetLang={targetLang} />
 
           {aiProcessing && (
             <div className="self-start ml-2 mt-2">
