@@ -4,11 +4,11 @@
 
 🟣 AstrixChat
 
-Real-Time, AI-Assisted Communication Platform
+    Real-Time, AI-Assisted Communication Platform
 
-AstrixChat is a real-time messaging platform designed to remove language barriers and enable seamless global communication using WebSockets and AI-assisted translation.
+    AstrixChat is a real-time messaging platform designed to remove language barriers and enable seamless global communication using WebSockets and AI-assisted translation.
 
-The system focuses on low latency, high concurrency, and practical AI integration rather than demo-level features.
+    The system focuses on low latency, high concurrency, and practical AI integration rather than demo-level features.
 
 🚀 Key Features
 
