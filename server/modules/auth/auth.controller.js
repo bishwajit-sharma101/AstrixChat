@@ -2,7 +2,8 @@
 const asyncHandler = require('express-async-handler');
 const debug = require('debug')('app:auth:controller');
 const UserDto = require('../../shared/dtos/UserDto');
-
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // 2. Service Import (Business Logic)
 const authService = require('./auth.service');
 
@@ -53,6 +54,7 @@ const registerUser = asyncHandler(async (req, res) => {
  * @access Public
  */
 const loginUser = asyncHandler(async (req, res) => {
+    console.log("Login attempt -> req.body:", req.body);
     debug('Received login request.');
     const { email, password } = req.body;
 
@@ -78,12 +80,14 @@ const loginUser = asyncHandler(async (req, res) => {
         sameSite: "lax",
         maxAge: 1000 * 60 * 60 * 24 * 7,
     });
-
+  console.log("Login attempt -> req.body:", req.body);
     res.status(200).json({
         success: true,
         user: new UserDto(user),
         message: 'Login successful. User authenticated.',
     });
+  
+
 });
 
 /**
@@ -106,8 +110,48 @@ const logoutUser = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: 'User successfully logged out.' });
 });
 
+const googleAuth = asyncHandler(async (req, res) => {
+    const { token } = req.body; // Token received from frontend
+
+    // 1. Verify token with Google
+    // Note: If using access_token (default in your React code), we fetch user info
+    const googleRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+    const googleData = await googleRes.json();
+
+    if (!googleData.email) {
+        res.status(400);
+        throw new Error('Invalid Google Token');
+    }
+
+    // 2. Use service to login/register
+    const { user, token: systemToken } = await authService.googleLogin(googleData);
+
+    // 3. Set Cookies (Matching your existing login logic)
+    res.cookie('token', systemToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+        sameSite: "lax"
+    });
+
+    res.cookie('user', JSON.stringify(new UserDto(user)), {
+        httpOnly: false,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    res.status(200).json({
+        success: true,
+        user: new UserDto(user),
+        message: 'Google login successful',
+    });
+});
+
+
 module.exports = {
     registerUser,
     loginUser,
     logoutUser,
+    googleAuth,
 };

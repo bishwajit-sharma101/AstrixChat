@@ -1,8 +1,6 @@
-// src/components/chat/ChatWindow.jsx
 "use client";
 
 import React, { useState } from "react";
-import { useEffect } from "react";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { MoreVertical, Phone, Video, Sparkles, Languages } from "lucide-react";
@@ -105,7 +103,7 @@ const GlassHeader = ({ activeChat, targetLang, setTargetLang }) => (
 
 // ---------------- MAIN CHAT WINDOW ----------------
 export default function ChatWindow({ chat, onSend, aiProcessing, currentUser }) {
-  const [targetLang, setTargetLang] = useState("none"); // ALWAYS use codes
+  const [targetLang, setTargetLang] = useState("none"); 
 
   if (!chat)
     return (
@@ -123,7 +121,14 @@ export default function ChatWindow({ chat, onSend, aiProcessing, currentUser }) 
 
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 relative z-[-1]">
         <div className="max-w-4xl mx-auto py-6 flex flex-col gap-6">
-          <MessageList messages={chat.messages} currentUser={currentUser} targetLang={targetLang} />
+          
+          {/* 🔥 CRITICAL FIX: The key={chat.id} forces the list to reset when switching users */}
+          <MessageList 
+            key={chat.id} 
+            messages={chat.messages} 
+            currentUser={currentUser} 
+            targetLang={targetLang} 
+          />
 
           {aiProcessing && (
             <div className="self-start ml-2 mt-2">

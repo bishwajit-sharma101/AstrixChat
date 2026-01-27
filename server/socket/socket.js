@@ -1,4 +1,4 @@
-// backend/socket.js
+const Message = require("../modules/chat/models/message.model.js");
 const { Server } = require("socket.io");
 
 const onlineUsers = new Map();
@@ -22,44 +22,43 @@ module.exports = function initSocket(server) {
       io.emit("online-users", Array.from(onlineUsers.keys()));
     });
 
-    // PRIVATE MESSAGE
-    socket.on("private-message", (payload) => {
-      const {
-        toUserId,
-        fromUserId,
-        message,
-        originalAudioUrl,
-        originalAudioBlob, // ← NOW CAPTURED
-        translatedAudioUrl,
-        translatedText,
-        metadata = {},
-      } = payload;
+    // PRIVATE MESSAGE - FIXED FOR DUAL COMPATIBILITY
+    socket.on("private-message", async (payload) => {
+      try {
+        const { fromUserId, toUserId, message } = payload;
 
-      const targetSocketId = onlineUsers.get(toUserId);
-
-      console.log(`📨 Message from ${fromUserId} to ${toUserId}`, {
-        message,
-        originalAudioUrl,
-        originalAudioBlob, // ← NOW LOGGED
-        translatedAudioUrl,
-        translatedText,
-        targetSocketId,
-      });
-
-      if (targetSocketId) {
-        io.to(targetSocketId).emit("private-message", {
-          fromUserId,
-          message,
-          originalAudioUrl,
-          originalAudioBlob, // ← NOW FORWARDED
-          translatedAudioUrl,
-          translatedText,
-          metadata,
+        // 1. Save to Database using the new "Neural Cache" schema
+        const savedMessage = await Message.create({
+          from: fromUserId,
+          to: toUserId,
+          content: {
+            original: message,
+            translations: {} // Initialize empty Map for future translations
+          }
         });
-        console.log("✅ Message forwarded to socket:", targetSocketId);
-      } else {
-        console.log("⚠️ Receiver is OFFLINE or ID mismatch. Message dropped.");
-        socket.emit("message-failed", { error: "User is offline" });
+
+        // 2. Create the Dual Payload
+        // We include 'message' for the UI and 'content' for the translation logic
+        const enrichedPayload = {
+          ...payload,
+          _id: savedMessage._id,
+          createdAt: savedMessage.createdAt,
+          message: message,             // Fixes the "nothing showing up" issue for receiver
+          content: savedMessage.content // Allows MessageList to access the translations Map
+        };
+
+        // 3. Route to Receiver
+        const targetSocketId = onlineUsers.get(toUserId);
+        if (targetSocketId) {
+          io.to(targetSocketId).emit("private-message", enrichedPayload);
+        }
+        
+        // 4. Send back to Sender (to sync the local state with DB _id)
+        socket.emit("private-message", enrichedPayload);
+
+      } catch (err) {
+        console.error("❌ Message save error:", err);
+        socket.emit("message-failed", { error: "Message validation failed on server" });
       }
     });
 

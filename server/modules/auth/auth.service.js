@@ -54,15 +54,21 @@ const register = async ({ name, email, password }) => {
 /**
  * STUB: Handles user login logic.
  */
+/**
+ * Handles user login logic.
+ */
 const login = async (email, password) => {
-    // 1. Find user by email
-    const user = await User.findOne({ email });
+    // 1. Find user by email AND explicitly select the hidden password field
+    const user = await User.findOne({ email }).select('+password');
 
-    // 2. Check if user exists and if password matches (using the method on the schema)
-    // You will implement this logic later.
+    // 2. Check if user exists and if password matches
     if (user && (await user.matchPassword(password))) {
         debug(`Login successful for user ${email}`);
         const token = generateToken(user._id);
+        
+        // Remove password from the user object before returning so it's not sent to frontend
+        user.password = undefined; 
+        
         return { user, token };
     } else {
         debug(`Login failed: Invalid credentials for ${email}`);
@@ -72,8 +78,32 @@ const login = async (email, password) => {
     }
 };
 
+const googleLogin = async (googleData) => {
+    const { email, name, picture } = googleData;
+
+    // 1. Check if user exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+        // 2. If not, create them (with a random password since they use Google)
+        debug(`Creating new Google user: ${email}`);
+        user = await User.create({
+            name,
+            email,
+            password: Math.random().toString(36).slice(-16), // Dummy password
+            avatar: picture,
+            role: 'user'
+        });
+    }
+
+    // 3. Generate your system token
+    const token = generateToken(user._id);
+    return { user, token };
+};
+
 module.exports = {
     register,
     login,
+    googleLogin,
     generateToken,
 };

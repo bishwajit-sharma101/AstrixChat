@@ -6,6 +6,7 @@ const authRoutes = require('../../modules/auth/auth.routes');
 const chatRoutes = require('./chat.routes');
 const aiRoutes = require('./ai.routes');
 
+
 // Mount the routes
 router.use('/auth', authRoutes);
 router.use('/chat', chatRoutes);

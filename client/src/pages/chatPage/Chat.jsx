@@ -1,277 +1,312 @@
-// src/pages/chat.jsx
 import React, { useState, useEffect } from "react";
 import NebulaLayout from "../../layouts/NebulaLayout";
 import Sidebar from "../../components/chat/Sidebar";
 import ChatWindow from "../../components/chat/ChatWindow";
 import RightDrawer from "../../components/chat/RightDrawer";
+import PublicFeed from "../../components/chat/PublicFeed"; 
 import { getSocket } from "../../socket";
 import Cookies from "js-cookie";
+import { usePublicFeed } from "../../hooks/usePublicFeed";
+
+// --- HELPER 1: Convert Blob to Base64 String (For Sending) ---
+const blobToBase64 = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // The result looks like "data:audio/webm;base64,VGhpcyBpcy..."
+      // We only want the part after the comma
+      const base64String = reader.result.split(",")[1]; 
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+// --- HELPER 2: Convert Base64 String to Blob (For Receiving) ---
+const base64ToBlob = (base64, mimeType = "audio/webm") => {
+  try {
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNumbers[i] = byteChars.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
+  } catch (e) {
+    console.error("Failed to convert base64 to blob", e);
+    return null;
+  }
+};
 
 export default function Chat() {
-  const [users, setUsers] = useState([]);
-  const [activeChat, setActiveChat] = useState(null);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [aiProcessing, setAiProcessing] = useState(false);
-  const [aiReply, setAiReply] = useState("");
+  const [viewMode, setViewMode] = useState("chat"); 
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false); 
+  const [rightDrawerMode, setRightDrawerMode] = useState("ai"); 
+  const [activePostForComments, setActivePostForComments] = useState(null);
 
-  const token = Cookies.get("token");
-  const currentUser = Cookies.get("user") ? JSON.parse(Cookies.get("user")) : null;
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiReply, setAiReply] = useState("");
 
-  if (!token || !currentUser) {
-    return (
-      <div className="min-h-screen bg-[#030014] text-white flex items-center justify-center">
-        Please login first.
-      </div>
-    );
-  }
+  const { posts, isLoading, createPost, addComment } = usePublicFeed();
 
-  // Register socket user
-  useEffect(() => {
-    const socket = getSocket();
-    const userId = currentUser?._id || currentUser?.id;
-    if (socket && userId) {
-      socket.emit("register-user", userId);
-    }
-  }, [currentUser]);
+  const token = Cookies.get("token");
+  const currentUser = Cookies.get("user") ? JSON.parse(Cookies.get("user")) : null;
+  
+  if (!token || !currentUser) {
+    return (
+      <div className="min-h-screen bg-[#030014] text-white flex items-center justify-center">
+        Please login first.
+      </div>
+    );
+  }
 
-  // Fetch user list
-  useEffect(() => {
-    fetch("http://localhost:5000/api/v1/users", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setUsers(data.users);
-      })
-      .catch((err) => console.log("Fetch error:", err))
-      .finally(() => setLoading(false));
-  }, []);
+  useEffect(() => {
+    const socket = getSocket();
+    const userId = currentUser?._id || currentUser?.id;
+    if (socket && userId) {
+      socket.emit("register-user", userId);
+    }
+  }, [currentUser?._id, currentUser?.id]);
 
-  // Online status
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-    const handler = (list) => setOnlineUsers(list);
-    socket.on("online-users", handler);
-    return () => socket.off("online-users", handler);
-  }, []);
+  useEffect(() => {
+    fetch("http://localhost:5000/api/v1/users", { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setUsers(data.users);
+      })
+      .catch((err) => console.log("Fetch error:", err))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // Receiving messages
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+  const fetchChatHistory = async (otherUserId) => {
+    try {
+      const myId = currentUser?._id || currentUser?.id;
+      if (!myId) return [];
+      
+      const res = await fetch(
+        `http://localhost:5000/api/v1/chat/messages/history/${otherUserId}?myId=${myId}`,
+        { method: "GET", credentials: "include" }
+      );
 
-    const handler = (payload) => {
-  console.log("--- Received Payload ---", payload);
-      const {
-        fromUserId,
-        message,
-        originalAudioUrl,
-        originalAudioBlob,
-        translatedAudioUrl,
-        translatedText,
-        metadata,
-      } = payload;
+      const data = await res.json();
+      if (!data.success) return [];
 
-      setActiveChat((prev) => {
-        if (!prev || prev.id !== fromUserId) return prev;
+      return data.messages.map((m) => ({
+        id: m._id,
+        textOriginal: m.content?.original || m.message || "", 
+        content: m.content, 
+        textTranslated: null,
+        audioOriginal: null,
+        audioOriginalBlob: null,
+        audioTranslated: null,
+        fromMe: String(m.from) === String(myId),
+        ts: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        metadata: {},
+      }));
+    } catch (err) {
+      console.error("History fetch failed", err);
+      return [];
+    }
+  };
 
-        const newMsg = {
-          id: Date.now(),
-          textOriginal: message || null,
-          textTranslated: translatedText || null,
-          audioOriginal: null,
-          audioOriginalBlob: null,
-          audioTranslated: translatedAudioUrl || null,
-          fromMe: false,
-          ts: "Now",
-          metadata: metadata || {},
-        };
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const handler = (list) => setOnlineUsers(list);
+    socket.on("online-users", handler);
+    return () => socket.off("online-users", handler);
+  }, []);
 
-        // Normalize originalAudioBlob to a real browser Blob and create objectURL
-        if (originalAudioBlob) {
-          try {
-            let blob = null;
+  // --- FIXED SOCKET HANDLER ---
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
 
-            // NEW LOGIC: Prioritize checking for the confirmed { data: [...] } structure
-            if (
-              typeof originalAudioBlob === "object" &&
-              originalAudioBlob.data &&
-              Array.isArray(originalAudioBlob.data)
-            ) {
-              console.log("--- FOUND: Array Buffer Data Structure ---");
-              const u8 = new Uint8Array(originalAudioBlob.data);
-              blob = new Blob([u8.buffer], { type: "audio/webm" });
-            } else if (originalAudioBlob instanceof Blob) {
-              blob = originalAudioBlob;
-            } else if (originalAudioBlob instanceof ArrayBuffer) {
-              blob = new Blob([originalAudioBlob], { type: "audio/webm" });
-            } else if (originalAudioBlob._isBuffer && originalAudioBlob.data) {
-              // Fallback for Node.js Buffer structure
-              const u8 = new Uint8Array(originalAudioBlob.data);
-              blob = new Blob([u8.buffer], { type: "audio/webm" });
-            } else if (typeof originalAudioBlob === "object" && originalAudioBlob.byteLength) {
-              blob = new Blob([originalAudioBlob], { type: "audio/webm" });
-            } else if (Array.isArray(originalAudioBlob)) {
-              // Check for raw array of bytes
-              const u8 = new Uint8Array(originalAudioBlob);
-              blob = new Blob([u8.buffer], { type: "audio/webm" });
-            } else {
-              // FINAL FALLBACK
-              try {
-                const arr = originalAudioBlob.data || originalAudioBlob;
-                const u8 = new Uint8Array(arr);
-                blob = new Blob([u8.buffer], { type: "audio/webm" });
-              } catch (e) {
-                console.warn("Unable to normalize originalAudioBlob", e);
-              }
-            }
+    const handler = (payload) => {
+      // 1. Destructure the Base64 audio string
+      const { fromUserId, toUserId, message, content, metadata, originalAudioBase64 } = payload;
+      const myId = currentUser?._id || currentUser?.id;
 
-            if (blob) {
-              console.log("--- Successfully created Blob on receiver ---", blob);
-              const url = URL.createObjectURL(blob);
-              newMsg.audioOriginal = url;
-              newMsg.audioOriginalBlob = blob;
-            }
-          } catch (err) {
-            console.warn("Failed to create object URL for originalAudioBlob", err);
-          }
-        } else if (originalAudioUrl) {
-          newMsg.audioOriginal = originalAudioUrl;
-        }
+      setActiveChat((prev) => {
+        if (!prev) return prev;
 
-        return {
-          ...prev,
-          messages: [...prev.messages, newMsg],
-        };
-      });
-    };
+        const isRelated = (prev.id === fromUserId) || (String(fromUserId) === String(myId) && prev.id === toUserId);
+        if (!isRelated) return prev;
 
-    socket.on("private-message", handler);
-    return () => socket.off("private-message", handler);
-  }, [activeChat]);
+        const isDuplicate = prev.messages.some(m => 
+          (payload._id && m.id === payload._id) || 
+          (metadata?.tempId && m.id === metadata.tempId)
+        );
 
-  const handleSelectChat = (user) => {
-    setActiveChat({
-      id: user._id,
-      name: user.name,
-      avatar: user.avatar,
-      messages: [],
-    });
-    setAiReply("");
-  };
+        if (isDuplicate) {
+          // If duplicate, just update ID but KEEP existing audio blobs (sender side)
+          return {
+            ...prev,
+            messages: prev.messages.map(m => 
+              m.id === metadata?.tempId ? { ...m, id: payload._id } : m
+            )
+          };
+        }
 
-  // ---------- SEND MESSAGE (UNCHANGED) ----------
-  const sendMessage = async (msgOrBlob, targetLang) => {
-    if (!activeChat) return;
-    const socket = getSocket();
-    const currentUserId = currentUser?._id || currentUser?.id;
+        // 2. RECONSTRUCT BLOB (Receiver Side)
+        let reconstructedBlob = null;
+        let reconstructedUrl = null;
 
-    setAiProcessing(true);
+        if (originalAudioBase64) {
+          console.log("🔊 Receiving Audio Base64 length:", originalAudioBase64.length);
+          reconstructedBlob = base64ToBlob(originalAudioBase64);
+          if (reconstructedBlob) {
+            reconstructedUrl = URL.createObjectURL(reconstructedBlob);
+          }
+        }
 
-    const isAudio = msgOrBlob instanceof Blob;
+        const newMsg = {
+          id: payload._id || Date.now(),
+          textOriginal: content?.original || message || null,
+          content: content || { original: message, translations: {} },
+          fromMe: String(fromUserId) === String(myId),
+          ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          
+          // 3. INJECT THE RECONSTRUCTED AUDIO
+          audioOriginal: reconstructedUrl, 
+          audioOriginalBlob: reconstructedBlob, 
 
-    // ------------------- NEW: AI Command Check and Exit -------------------
-    // If message addressed to @ash and is not audio, handle AI locally and return
-    if (!isAudio && typeof msgOrBlob === 'string' && msgOrBlob.startsWith("@ash")) {
-      const purePrompt = msgOrBlob.replace("@ash", "").trim();
-      try {
-        setAiReply("Thinking...");
-        const response = await fetch("http://localhost:11434/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "my-chat",
-            prompt: purePrompt,
-            stream: false,
-          }),
-        });
-        const data = await response.json();
-        setAiReply(data.response);
-      } catch (err) {
-        setAiReply("⚠️ Could not reach local AI engine.");
-      }
+          metadata: metadata || {},
+        };
 
-      setAiProcessing(false);
-      // STOP EXECUTION: This message is a local command, so we don't display it or send it via socket.
-      return; 
-    }
-    // ------------------- END NEW -------------------
+        return { ...prev, messages: [...prev.messages, newMsg] };
+      });
+    };
 
-    let finalMessagePayload = isAudio ? "(Voice Message)" : msgOrBlob;
-    let originalAudioUrl = null;
+    socket.on("private-message", handler);
+    return () => socket.off("private-message", handler);
+  }, [currentUser?._id, currentUser?.id]);
 
-    // AUDIO: create local URL for sender playback only
-    if (isAudio) {
-      originalAudioUrl = URL.createObjectURL(msgOrBlob);
-    }
+  const handleSelectChat = async (user) => {
+    setViewMode("chat");
+    setRightDrawerMode("ai"); 
+    setRightDrawerOpen(true);
+    
+    const history = await fetchChatHistory(user._id);
+    setActiveChat({
+      id: user._id,
+      name: user.name,
+      avatar: user.avatar,
+      messages: history,
+    });
+    setAiReply("");
+  };
 
-    // TEXT: send raw message as original (no translation on sender)
-    if (!isAudio) {
-      finalMessagePayload = msgOrBlob;
-    }
+  const handleStartChatFromFeed = async (targetUserId) => {
+    const targetUser = users.find(u => u._id === targetUserId);
+    if (targetUser) await handleSelectChat(targetUser);
+  };
 
-    // Local UI for sender: only original (no translated content)
-    setActiveChat((prev) => ({
-      ...prev,
-      messages: [
-        ...prev.messages,
-        {
-          id: Date.now(),
-          textOriginal: isAudio ? null : (msgOrBlob || null),
-          textTranslated: null,
-          audioOriginal: isAudio ? originalAudioUrl : null,
-          audioOriginalBlob: null,
-          audioTranslated: null,
-          fromMe: true,
-          ts: "Now",
-          metadata: {},
-        },
-      ],
-    }));
+  const handleOpenComments = (post) => {
+    setActivePostForComments(post);
+    setRightDrawerMode("comments");
+    setRightDrawerOpen(true);
+  };
 
-    // Emit socket: include the actual Blob so backend can forward binary to recipient
-    const payload = {
-      toUserId: activeChat.id,
-      fromUserId: currentUserId,
-      message: isAudio ? "(Voice Message)" : (msgOrBlob || finalMessagePayload),
-      originalAudioUrl: isAudio ? originalAudioUrl : null,
-      originalAudioBlob: isAudio ? msgOrBlob : null,
-      translatedAudioUrl: null,
-      translatedText: null,
-      metadata: {}, // do NOT include sender's targetLang
-    };
+  // --- FIXED SEND MESSAGE FUNCTION ---
+  const sendMessage = async (msgOrBlob, targetLang) => {
+    if (!activeChat) return;
+    const socket = getSocket();
+    const currentUserId = currentUser?._id || currentUser?.id;
 
-    socket.emit("private-message", payload);
+    const isAudio = msgOrBlob instanceof Blob;
 
-    setAiProcessing(false);
-  };
-  // ---------- END SEND MESSAGE (UNCHANGED) ----------
+    if (!isAudio && typeof msgOrBlob === 'string' && msgOrBlob.startsWith("@ash")) {
+      const purePrompt = msgOrBlob.replace("@ash", "").trim();
+      setAiProcessing(true);
+      try {
+        setAiReply("Thinking...");
+        const response = await fetch("http://localhost:11434/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "my-chat", prompt: purePrompt, stream: false }),
+        });
+        const data = await response.json();
+        setAiReply(data.response);
+      } catch (err) { setAiReply("⚠️ Error."); }
+      setAiProcessing(false); 
+      return; 
+    }
 
-  if (loading)
-    return (
-      <div className="min-h-screen bg-[#030014] flex items-center justify-center text-brand-400">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
-      </div>
-    );
+    const tempId = Date.now(); 
+    // Sender gets a local URL immediately
+    let originalAudioUrl = isAudio ? URL.createObjectURL(msgOrBlob) : null;
 
-  return (
-    <NebulaLayout>
-      <Sidebar
-        chats={users}
-        activeChatId={activeChat?.id}
-        onSelectChat={handleSelectChat}
-        onlineUsers={onlineUsers}
-      />
+    // 1. Add to Local UI (Optimistic)
+    setActiveChat((prev) => ({
+      ...prev,
+      messages: [
+        ...prev.messages,
+        {
+          id: tempId,
+          textOriginal: isAudio ? null : msgOrBlob,
+          content: { original: isAudio ? null : msgOrBlob, translations: {} },
+          fromMe: true,
+          ts: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          audioOriginal: originalAudioUrl,
+          audioOriginalBlob: isAudio ? msgOrBlob : null,
+          metadata: { tempId },
+        },
+      ],
+    }));
 
-      <ChatWindow
-        chat={activeChat}
-        onSend={sendMessage}
-        aiProcessing={aiProcessing}
-        currentUser={currentUser}
-      />
+    // 2. Prepare Base64 for Network Transmission
+    let audioBase64 = null;
+    if (isAudio) {
+        audioBase64 = await blobToBase64(msgOrBlob);
+        console.log("🎤 Sending Audio Base64 length:", audioBase64.length);
+    }
 
-      <RightDrawer visible={!!activeChat} chat={activeChat} aiReply={aiReply} />
-    </NebulaLayout>
-  );
+    // 3. Emit to Socket
+    socket.emit("private-message", {
+      toUserId: activeChat.id,
+      fromUserId: currentUserId,
+      message: isAudio ? "(Voice Message)" : msgOrBlob,
+      // Do NOT send the raw Blob object, it causes socket issues. Send Base64.
+      originalAudioBase64: audioBase64, 
+      metadata: { tempId }, 
+    });
+  };
+
+  if (loading)
+    return (
+      <div className="min-h-screen bg-[#030014] flex items-center justify-center text-brand-400">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
+      </div>
+    );
+
+  return (
+    <NebulaLayout>
+      <Sidebar
+        chats={users}
+        activeChatId={activeChat?.id}
+        onSelectChat={handleSelectChat}
+        onlineUsers={onlineUsers}
+        viewMode={viewMode}
+        onViewChange={(mode) => {
+          setViewMode(mode);
+          if (mode === 'global') setRightDrawerOpen(false); 
+          else if (activeChat) setRightDrawerOpen(true);
+        }}
+      />
+      
+      {viewMode === "chat" ? (
+        <ChatWindow chat={activeChat} onSend={sendMessage} aiProcessing={aiProcessing} currentUser={currentUser} />
+      ) : (
+        <PublicFeed posts={posts} isLoading={isLoading} onCreatePost={createPost} onStartChat={handleStartChatFromFeed} onOpenComments={handleOpenComments} />
+      )}
+
+      <RightDrawer visible={rightDrawerOpen} onClose={() => setRightDrawerOpen(false)} mode={rightDrawerMode} chat={activeChat} aiReply={aiReply} aiProcessing={aiProcessing} activePost={activePostForComments} onAddComment={addComment} />
+    </NebulaLayout>
+  );
 }

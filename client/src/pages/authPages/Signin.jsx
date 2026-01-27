@@ -1,18 +1,17 @@
-// src/pages/auth/Signin.jsx
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from 'react-router-dom'; 
 import { motion } from "framer-motion";
 import { Lock, Mail, ArrowRight, Sparkles } from "lucide-react";
+// Import Google login hook
+import { useGoogleLogin } from '@react-oauth/google';
 
 const Signin = () => {
   const navigate = useNavigate();
-
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -23,12 +22,37 @@ const Signin = () => {
     }));
   };
 
+  // --- GOOGLE LOGIN HANDLER ---
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      try {
+        // Send the access token to your backend to verify/create user
+        const response = await axios.post(
+          "http://localhost:5000/api/v1/auth/google", 
+          { token: tokenResponse.access_token },
+          { withCredentials: true }
+        );
+        
+        console.log("Google Login success:", response.data);
+        setTimeout(() => navigate("/chat"), 800);
+      } catch (error) {
+        console.error("Google Login failed:", error.response?.data || error.message);
+        alert("Google Authentication failed.");
+        setIsLoading(false);
+      }
+    },
+    onError: () => {
+      console.log('Login Failed');
+      setIsLoading(false);
+    },
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // NOTE: Ensure your API URL is correct
       let response = await axios.post(
         "http://localhost:5000/api/v1/auth/login",
         formData,
@@ -38,7 +62,6 @@ const Signin = () => {
       console.log("Login success:", response.data);
       setFormData({ email: '', password: '' });
       
-      // Simulate a small delay for the "premium feel" loading state
       setTimeout(() => {
           navigate("/chat");
       }, 800);
@@ -55,7 +78,6 @@ const Signin = () => {
       
       {/* --- BACKGROUND FX --- */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
-      {/* The "Portal" Glow behind the card */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-600/20 rounded-full blur-[100px] pointer-events-none animate-pulse-slow" />
       
       {/* --- MAIN CARD --- */}
@@ -65,7 +87,6 @@ const Signin = () => {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative z-10 w-full max-w-md p-1"
       >
-        {/* Border Gradient Wrapper */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-2xl pointer-events-none" />
         
         <div className="relative bg-[#0b0b15]/80 backdrop-blur-2xl border border-white/5 shadow-2xl shadow-black/50 rounded-2xl p-8 md:p-10">
@@ -79,7 +100,7 @@ const Signin = () => {
             <p className="text-slate-400 text-sm">Enter the Astrix Neural Network.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             
             {/* EMAIL INPUT */}
             <div className="space-y-1">
@@ -124,7 +145,7 @@ const Signin = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full relative group overflow-hidden bg-white text-black font-bold py-3.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none mt-4"
+              className="w-full relative group overflow-hidden bg-white text-black font-bold py-3.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none mt-2"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-brand-200 to-brand-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative flex items-center justify-center gap-2">
@@ -138,8 +159,27 @@ const Signin = () => {
                  )}
               </div>
             </button>
-
           </form>
+
+          {/* OR DIVIDER */}
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/5"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#0b0b15] px-2 text-slate-500">Or continue with</span>
+            </div>
+          </div>
+
+          {/* GOOGLE SIGN IN BUTTON */}
+          <button
+            onClick={() => googleLogin()}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 bg-[#13131f] border border-white/10 text-white font-medium py-3 rounded-xl transition-all hover:bg-white/5 hover:border-white/20 active:scale-[0.98] disabled:opacity-50"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+            <span>Google Identity</span>
+          </button>
 
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-white/5 text-center">

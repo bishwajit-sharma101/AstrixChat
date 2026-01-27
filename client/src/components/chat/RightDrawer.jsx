@@ -1,173 +1,274 @@
 import React, { useState, useEffect } from "react";
-import { motion, useAnimation } from "framer-motion";
-import { X, Bot, Cpu, Scan } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Bot, Scan, ChevronRight, Sparkles, Zap, MessageCircle, Send } from "lucide-react";
+
+// --- 3D NEURAL HELIX ANIMATION ---
+const NeuralHelix = () => {
+  const points = Array.from({ length: 20 });
+  
+  return (
+    <div className="w-full h-64 flex items-center justify-center" style={{ perspective: '1200px' }}>
+      <motion.div 
+        className="relative w-full h-full flex items-center justify-center"
+        style={{ transformStyle: 'preserve-3d' }}
+        animate={{ rotateY: 360 }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      >
+        {points.map((_, i) => {
+          const angle = (i / points.length) * Math.PI * 4; 
+          const y = (i - points.length / 2) * 12; 
+          
+          return (
+            <React.Fragment key={i}>
+              <motion.div
+                className="absolute w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"
+                style={{ transform: `rotateY(${angle}rad) translateZ(40px) translateY(${y}px)` }}
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+              />
+              <motion.div
+                className="absolute w-2 h-2 bg-purple-500 rounded-full shadow-[0_0_10px_#a855f7]"
+                style={{ transform: `rotateY(${angle + Math.PI}rad) translateZ(40px) translateY(${y}px)` }}
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+              />
+              <div 
+                className="absolute h-[1px] bg-gradient-to-r from-cyan-400/20 via-white/40 to-purple-500/20"
+                style={{ width: '80px', transform: `rotateY(${angle}rad) translateY(${y}px)`, transformStyle: 'preserve-3d' }}
+              />
+            </React.Fragment>
+          );
+        })}
+      </motion.div>
+    </div>
+  );
+};
 
 export default function RightDrawer({
   visible = true,
+  mode = "ai", // 'ai' or 'comments'
+  onClose = () => {},
+  
+  // AI Props
   chat = null,
   aiReply = "",
-  onClose = () => {},
-  onCardSelect = () => {}, // 👈 you will use this to insert text into input
+  aiProcessing = false,
+  onCardSelect = () => {},
+
+  // Comments Props
+  activePost = null,
+  onAddComment = () => {},
 }) {
-
-  const safeChat = chat || { id: null, name: "No conversation", avatar: null };
-
-  const controls = useAnimation();
-  const [scanProgress, setScanProgress] = useState(0);
   const [cards, setCards] = useState([]);
-
-  // ---------------- TYPEWRITER FOR AI RESPONSE ----------------
+  const [localThinking, setLocalThinking] = useState(false);
   const [typedReply, setTypedReply] = useState("");
+  
+  // Comment Input State
+  const [commentInput, setCommentInput] = useState("");
 
+  const isThinking = aiProcessing || localThinking;
+
+  // Typewriter effect for AI
   useEffect(() => {
-    if (!aiReply) {
+    if (mode !== 'ai' || !aiReply) {
       setTypedReply("");
       return;
     }
-
     let i = 0;
     setTypedReply("");
-
     const interval = setInterval(() => {
       setTypedReply(aiReply.slice(0, i + 1));
       i++;
-
       if (i >= aiReply.length) clearInterval(interval);
-    }, 15);
-
+    }, 12);
     return () => clearInterval(interval);
+  }, [aiReply, mode]);
 
-  }, [aiReply]);
+  const runScan = () => {
+    setLocalThinking(true);
+    setCards([]);
+    setTimeout(() => {
+      setCards([
+        "Explore historical context.",
+        "Analyze emotional tone.",
+        "Generate creative rebuttal.",
+        "Summarize key takeaways."
+      ]);
+      setLocalThinking(false);
+    }, 2500);
+  };
 
-  // ---------------- DRAWER ANIMATION ----------------
-  useEffect(() => {
-    if (!visible) return;
-
-    controls.start({ opacity: 1, x: 0 });
-
-    const t = setInterval(() => {
-      setScanProgress((p) => (p >= 100 ? 0 : p + Math.random() * 4));
-    }, 500);
-
-    return () => clearInterval(t);
-
-  }, [visible]);
+  const handleSendComment = (e) => {
+    e.preventDefault();
+    if (!commentInput.trim() || !activePost) return;
+    onAddComment(activePost.id, commentInput);
+    setCommentInput("");
+  };
 
   if (!visible) return null;
 
-  // ---------------- SCAN BUTTON HANDLER ----------------
-  const runScan = () => {
-    if (!chat?.messages?.length) return;
-
-    const lastMsgs = chat.messages.slice(-6).map((m) => m.text);
-
-    const generated = [
-      "Ask them to clarify something deeper.",
-      "Respond with empathy about their last message.",
-      "Continue the topic but with a twist—add curiosity.",
-      "Ask a related follow-up to keep the flow alive.",
-      "Share something small about yourself to balance the chat.",
-    ];
-
-    setCards(generated);
-  };
-
   return (
     <motion.aside
-      initial={{ x: 340, opacity: 0 }}
-      animate={controls}
-      exit={{ x: 340, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 200, damping: 25 }}
-      className="w-[360px] h-screen sticky top-0 p-5 bg-[#020205]/80 backdrop-blur-md border-l border-[#0b1220] shadow-[inset_0_0_80px_rgba(0,0,0,0.6)] overflow-y-auto text-slate-200"
+      initial={{ x: "100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "100%" }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="w-[380px] h-screen sticky top-0 bg-[#030308] border-l border-white/5 flex flex-col z-50 overflow-hidden shadow-2xl"
     >
-
+      {/* GLOW DECORATION */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 blur-[80px] pointer-events-none" />
+      
       {/* HEADER */}
-      <div className="flex items-start justify-between mb-4">
-        
-        <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[#071025] to-[#001018] border border-[#0b2b3a] flex items-center justify-center">
-            <Bot size={22} className="text-[#66ffee]" />
-          </div>
-
-          <div>
-            <div className="text-xs text-slate-400 uppercase tracking-wider">
-              ASTRiX • AI Coach
-            </div>
-            <div className="text-sm font-semibold tracking-wide">
-              {safeChat.name}
-            </div>
+      <div className="p-6 border-b border-white/5 flex items-center justify-between relative z-10 bg-[#030308]">
+        <div>
+          <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mb-1">
+            {mode === 'ai' ? 'Neural Stream' : 'Discussion'}
+          </h2>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${mode === 'ai' && isThinking ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-zinc-700'}`} />
+            <span className="text-xs font-bold text-white tracking-wide">
+              {mode === 'ai' ? (isThinking ? "SYNCHRONIZING..." : "STANDBY") : "LIVE FEED"}
+            </span>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          {/* SCAN BUTTON */}
-          <button
-            onClick={runScan}
-            className="px-3 py-[6px] rounded-md bg-[#041018] border border-[#0b2430] hover:bg-white/5 text-xs flex items-center gap-1"
-          >
-            <Scan size={14} /> Scan
-          </button>
-
-          <button
-            onClick={onClose}
-            className="p-2 rounded-md hover:bg-white/5 transition"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 hover:text-white transition-all">
+          <X size={20} />
+        </button>
       </div>
 
-      {/* LIVE SIGNAL CARD */}
-      <div className="relative mb-6 mx-auto w-full">
-        <div className="relative z-10 bg-[#061018]/60 border border-[#0e1a26] rounded-lg p-4 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] text-slate-400 uppercase tracking-widest flex items-center gap-1">
-              <Cpu size={14} /> Live Signal
-            </div>
-            <div className="text-[11px] text-slate-500">Latency: 120ms</div>
-          </div>
+      {/* --- CONTENT AREA: AI MODE --- */}
+      {mode === 'ai' && (
+        <div className="flex-1 overflow-y-auto px-6 custom-scrollbar">
+          <AnimatePresence mode="wait">
+            {isThinking ? (
+              /* 3D HELIX VIEW */
+              <motion.div 
+                key="thinking"
+                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }}
+                className="py-10"
+              >
+                <NeuralHelix />
+                <div className="text-center space-y-2 mt-4">
+                  <p className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-[0.4em]">Deciphering Neural Nodes</p>
+                  <div className="flex justify-center gap-1">
+                    {[1,2,3].map(i => <motion.div key={i} animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, delay: i*0.2 }} className="w-1 h-1 bg-white rounded-full" />)}
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              /* RESULTS VIEW */
+              <motion.div 
+                key="results"
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className="space-y-8 pt-6"
+              >
+                {typedReply && (
+                  <div className="relative p-5 rounded-3xl bg-white/[0.03] border border-white/5 group overflow-hidden">
+                    <div className="absolute -top-10 -left-10 w-24 h-24 bg-cyan-500/10 blur-3xl" />
+                    <div className="flex items-center gap-2 mb-4 text-cyan-400">
+                      <Zap size={14} className="fill-current" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Core Intelligence</span>
+                    </div>
+                    <p className="text-sm text-zinc-300 leading-relaxed font-light italic">"{typedReply}"</p>
+                  </div>
+                )}
 
-          <div className="relative h-2 bg-[#031018] rounded-full overflow-hidden border border-[#0b2632]">
-            <div
-              className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#00ffd5] via-[#66ffb3] to-[#7b61ff]"
-              style={{ width: `${Math.min(scanProgress, 100)}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
+                {cards.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="h-[1px] w-4 bg-zinc-800" /> Options
+                    </h4>
+                    {cards.map((c, i) => (
+                      <button key={i} onClick={() => onCardSelect(c)} className="w-full text-left p-5 bg-gradient-to-r from-white/[0.01] to-transparent hover:from-white/[0.04] border border-white/5 rounded-2xl group transition-all">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-zinc-400 group-hover:text-white transition-colors">{c}</span>
+                          <ChevronRight size={16} className="text-zinc-800 group-hover:text-cyan-400 transform group-hover:translate-x-1 transition-all" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-      {/* CENTERED CARDS */}
-      {cards.length > 0 && (
-        <div className="flex flex-col items-center gap-3 mb-6">
-          {cards.map((c, i) => (
-            <motion.button
-              key={i}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => onCardSelect(c)}
-              className="w-[90%] p-3 bg-[#041018] border border-[#0b2430] rounded-lg text-left shadow-md hover:bg-[#071b26]"
-            >
-              <div className="text-sm text-slate-200">{c}</div>
-            </motion.button>
-          ))}
+                {!typedReply && cards.length === 0 && (
+                  <button onClick={runScan} className="w-full py-12 rounded-3xl border-2 border-dashed border-white/5 hover:border-cyan-500/20 hover:bg-cyan-500/[0.02] transition-all group">
+                    <Scan size={32} className="mx-auto text-zinc-700 group-hover:text-cyan-500/50 mb-4" />
+                    <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Initiate Context Scan</p>
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
-      {/* AI REPLY BOX */}
-      {typedReply && (
-        <div className="mb-4 bg-[#050b13]/70 border border-[#0d1824] p-4 rounded-lg shadow-inner">
-          <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-2">
-            ASTRiX • Response
+      {/* --- CONTENT AREA: COMMENTS MODE --- */}
+      {mode === 'comments' && activePost && (
+        <div className="flex-1 flex flex-col h-full bg-[#05050A]">
+          {/* Active Post Snippet */}
+          <div className="p-4 bg-zinc-900/30 border-b border-white/5">
+             <div className="flex items-center gap-3 mb-2">
+                <img src={activePost.author.avatar} className="w-8 h-8 rounded-full" alt="OP" />
+                <span className="text-sm font-bold text-white">{activePost.author.name}</span>
+             </div>
+             <p className="text-xs text-zinc-400 line-clamp-2 italic">"{activePost.content.original}"</p>
           </div>
 
-          <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
-            {typedReply}
+          {/* Comment List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+             {(!activePost.commentsList || activePost.commentsList.length === 0) ? (
+                <div className="text-center py-10 opacity-30">
+                  <MessageCircle size={32} className="mx-auto mb-2" />
+                  <p className="text-xs">No comments yet.<br/>Start the discussion.</p>
+                </div>
+             ) : (
+                activePost.commentsList.map((c, i) => (
+                   <div key={i} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <img src={c.avatar} className="w-8 h-8 rounded-full mt-1 border border-white/10" alt="user" />
+                      <div className="flex-1">
+                         <div className="bg-white/5 p-3 rounded-2xl rounded-tl-none border border-white/5">
+                            <div className="flex justify-between items-baseline mb-1">
+                               <span className="text-xs font-bold text-zinc-300">{c.user}</span>
+                               <span className="text-[10px] text-zinc-600">{c.time}</span>
+                            </div>
+                            <p className="text-sm text-zinc-200">{c.text}</p>
+                         </div>
+                      </div>
+                   </div>
+                ))
+             )}
+          </div>
+
+          {/* Comment Input */}
+          <div className="p-4 border-t border-white/10 bg-[#030308]">
+             <form onSubmit={handleSendComment} className="relative">
+                <input
+                   type="text"
+                   value={commentInput}
+                   onChange={(e) => setCommentInput(e.target.value)}
+                   placeholder="Write a comment..."
+                   className="w-full bg-zinc-900/50 border border-white/10 text-white rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-purple-500/50 transition-colors"
+                />
+                <button 
+                  type="submit" 
+                  disabled={!commentInput.trim()} 
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-purple-600 rounded-lg text-white disabled:opacity-50 disabled:bg-zinc-700 transition-all hover:scale-105"
+                >
+                   <Send size={14} />
+                </button>
+             </form>
           </div>
         </div>
       )}
 
-      <div className="text-[11px] text-slate-500 font-mono mt-6">
-        ASTRiX • v0.4 • local-first • E2EE-ready
-      </div>
+      {/* FOOTER STATS */}
+      {mode === 'ai' && (
+        <div className="p-8 border-t border-white/5 bg-[#030308]">
+          <div className="flex justify-between items-center text-[9px] font-mono text-zinc-600 uppercase tracking-tighter">
+            <span>Signal Strength: 98%</span>
+            <span>E2EE Active</span>
+          </div>
+        </div>
+      )}
     </motion.aside>
   );
 }

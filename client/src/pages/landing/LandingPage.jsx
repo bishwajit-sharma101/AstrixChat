@@ -33,7 +33,7 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center gap-8 text-sm text-slate-300 font-medium">
            <a href="#features" className="hover:text-white transition">Features</a>
            <a href="#security" className="hover:text-white transition">Security</a>
-           <Link to="/chat" className="px-5 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition text-white">
+           <Link to="/signin" className="px-5 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition text-white">
              Login
            </Link>
         </div>
