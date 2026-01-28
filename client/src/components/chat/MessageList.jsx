@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Check, CheckCheck } from "lucide-react"; 
+import { Play, Pause, Check, CheckCheck, Trash2 } from "lucide-react"; 
 
 // --- INTERNAL COMPONENT: CUSTOM AUDIO PLAYER ---
 const CustomAudioPlayer = ({ src, isOwn }) => {
@@ -90,7 +90,7 @@ const CustomAudioPlayer = ({ src, isOwn }) => {
   );
 };
 
-export default function MessageList({ messages = [], currentUser = null, targetLang = "none" }) {
+export default function MessageList({ messages = [], currentUser = null, targetLang = "none", onDeleteMessage }) {
   const endRef = useRef(null);
   const [localMessages, setLocalMessages] = useState([]);
   const processedIds = useRef(new Set());
@@ -117,36 +117,49 @@ export default function MessageList({ messages = [], currentUser = null, targetL
     }
   };
 
+  // --- HELPER: Base64 to Blob URL ---
+  function base64ToUrl(base64, mime = "audio/wav") {
+    try {
+      const byteChars = atob(base64);
+      const byteNumbers = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mime });
+      return URL.createObjectURL(blob);
+    } catch (e) {
+      console.error("Base64 to URL conversion failed:", e);
+      return null;
+    }
+  }
+
   // --- SMART MERGE LOGIC ---
   useEffect(() => {
     setLocalMessages((prev) => {
       const prevMap = new Map(prev.map(m => [m.id, m]));
 
       return messages.map((newMsg) => {
-        // Normalize ID
         const id = newMsg._id || newMsg.id;
         const existing = prevMap.get(id);
         
-        // 1. Check DB for the NEW target language
         let dbTranslation = null;
         if (newMsg.content && newMsg.content.translations && targetLang !== 'none') {
            dbTranslation = newMsg.content.translations[targetLang];
         }
 
         if (existing) {
-          // 2. Validate Existing Local State
           const isSameLang = existing._translatedLang === targetLang;
-
           return {
             ...newMsg,
-            // Ensure we merge 'isRead' updates from socket/db
             isRead: newMsg.isRead !== undefined ? newMsg.isRead : existing.isRead,
-            // Translation Logic
             textTranslated: dbTranslation || (isSameLang ? existing.textTranslated : null),
+            // Maintain translated audio state if language hasn't changed
             audioTranslated: isSameLang ? existing.audioTranslated : null, 
             _translatedLang: dbTranslation ? targetLang : (isSameLang ? existing._translatedLang : null),
             _translatingText: isSameLang ? existing._translatingText : false,
-            _translatingAudio: isSameLang ? existing._translatingAudio : false
+            _translatingAudio: isSameLang ? existing._translatingAudio : false,
+            // Ensure audio blobs are preserved
+            audioOriginal: newMsg.audioOriginal || existing.audioOriginal,
+            audioOriginalBlob: newMsg.audioOriginalBlob || existing.audioOriginalBlob
           };
         }
         
@@ -167,21 +180,7 @@ export default function MessageList({ messages = [], currentUser = null, targetL
     setLocalMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   };
 
-  function base64ToUrl(base64, mime = "audio/wav") {
-    try {
-      const byteChars = atob(base64);
-      const byteNumbers = new Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: mime });
-      return URL.createObjectURL(blob);
-    } catch (e) {
-      console.error("Base64 to URL conversion failed:", e);
-      return null;
-    }
-  }
-
-  // --- TRANSLATION LOGIC ---
+  // --- TRANSLATION LOGIC (RESTORED) ---
   useEffect(() => {
     if (!localMessages || localMessages.length === 0) return;
 
@@ -189,7 +188,8 @@ export default function MessageList({ messages = [], currentUser = null, targetL
       if (!targetLang || targetLang === "none") return;
 
       const sessionKey = `${m.id}-${targetLang}`;
-      if (m._translatedLang === targetLang) return; 
+      // If already translated to this lang, skip
+      if (m._translatedLang === targetLang && (m.textTranslated || m.audioTranslated)) return; 
       if (processedIds.current.has(sessionKey)) return;
 
       // 1. Text Translation
@@ -202,10 +202,7 @@ export default function MessageList({ messages = [], currentUser = null, targetL
           const res = await fetch("http://127.0.0.1:7861/translate_text", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              text: originalText,
-              target_lang: targetLang,
-            }),
+            body: JSON.stringify({ text: originalText, target_lang: targetLang }),
           });
           const data = await res.json();
           const translatedResult = data.translation || data.translation_text;
@@ -224,49 +221,53 @@ export default function MessageList({ messages = [], currentUser = null, targetL
         }
       }
 
-      // 2. Audio Translation
+      // 2. Audio Translation (Voice-to-Voice)
+      // Check if we have the blob and haven't translated yet
       if (m.audioOriginalBlob && !m.audioTranslated && !m._translatingAudio) {
-        const audioKey = `${m.id}-audio-${targetLang}`;
-        if (processedIds.current.has(audioKey)) return;
-        processedIds.current.add(audioKey);
+         const audioKey = `${m.id}-audio-${targetLang}`;
+         if (processedIds.current.has(audioKey)) return;
+         processedIds.current.add(audioKey);
 
-        updateMessageById(m.id, { _translatingAudio: true });
+         updateMessageById(m.id, { _translatingAudio: true });
 
-        try {
-          const audioBlob = m.audioOriginalBlob;
-          const formData = new FormData();
-          formData.append("audio", audioBlob, "input.webm"); 
-          formData.append("target_lang", targetLang);
+         try {
+            const formData = new FormData();
+            // Important: 'audio' key must match what your Python backend expects
+            formData.append("audio", m.audioOriginalBlob, "input.webm");
+            formData.append("target_lang", targetLang);
 
-          const resp = await fetch("http://127.0.0.1:7861/translate_voice", {
-            method: "POST",
-            body: formData,
-          });
+            const resp = await fetch("http://127.0.0.1:7861/translate_voice", {
+               method: "POST",
+               body: formData
+            });
 
-          if (!resp.ok) throw new Error(`Status ${resp.status}`);
-          const data = await resp.json();
-          let translatedURL = null;
-          let translatedText = data.translated_text || data.translation || data.transcription;
+            if (!resp.ok) throw new Error(`Status ${resp.status}`);
+            const data = await resp.json();
+            
+            let translatedURL = null;
+            let translatedText = data.translated_text || data.translation || data.transcription;
 
-          if (data.audio_file) {
-            translatedURL = `http://127.0.0.1:7861/file/${data.audio_file}`;
-          } else if (data.translated_audio_base64) {
-            translatedURL = base64ToUrl(data.translated_audio_base64);
-          }
+            // Handle response: either file path or base64
+            if (data.audio_file) {
+               translatedURL = `http://127.0.0.1:7861/file/${data.audio_file}`;
+            } else if (data.translated_audio_base64) {
+               translatedURL = base64ToUrl(data.translated_audio_base64);
+            }
 
-          updateMessageById(m.id, {
-            audioTranslated: translatedURL,
-            textTranslated: translatedText || m.textTranslated,
-            _translatedLang: targetLang,
-            _translatingAudio: false,
-          });
+            updateMessageById(m.id, {
+               audioTranslated: translatedURL,
+               textTranslated: translatedText || m.textTranslated, // Fallback to existing text if API doesn't return text
+               _translatedLang: targetLang,
+               _translatingAudio: false
+            });
 
-          if (translatedText) saveTranslationToDB(m.id, targetLang, translatedText);
+            if (translatedText) saveTranslationToDB(m.id, targetLang, translatedText);
 
-        } catch (err) {
-          updateMessageById(m.id, { _translatingAudio: false });
-          processedIds.current.delete(audioKey);
-        }
+         } catch (err) {
+            console.error("Audio translation error:", err);
+            updateMessageById(m.id, { _translatingAudio: false });
+            processedIds.current.delete(audioKey);
+         }
       }
     });
   }, [localMessages, targetLang]);
@@ -290,8 +291,20 @@ export default function MessageList({ messages = [], currentUser = null, targetL
               key={m.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex w-full ${own ? 'justify-end' : 'justify-start'}`}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className={`flex w-full group ${own ? 'justify-end' : 'justify-start'}`}
             >
+              {/* Delete Button */}
+              {own && (
+                <button
+                  onClick={() => onDeleteMessage(m.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-slate-500 hover:text-red-400 self-center"
+                  title="Delete Message"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+
               <div
                 className={`
                   relative px-4 py-2.5 rounded-2xl backdrop-blur-md border transition-all duration-500
@@ -303,10 +316,12 @@ export default function MessageList({ messages = [], currentUser = null, targetL
               >
                 {(hasAudioOriginal || hasAudioTranslated) ? (
                   <div className="flex flex-col gap-2 min-w-[180px]">
+                    {/* 1. Original Audio */}
                     {hasAudioOriginal && (own || !hasAudioTranslated) && (
                       <CustomAudioPlayer src={m.audioOriginal} isOwn={own} />
                     )}
 
+                    {/* 2. Translated Audio */}
                     {!own && hasAudioTranslated && (
                       <>
                          {hasAudioOriginal && <div className="h-[1px] w-full bg-white/5 my-1" />}
@@ -315,10 +330,12 @@ export default function MessageList({ messages = [], currentUser = null, targetL
                       </>
                     )}
                     
-                    {!own && !hasAudioTranslated && targetLang !== 'none' && (
+                    {/* 3. Loading State */}
+                    {!own && !hasAudioTranslated && targetLang !== 'none' && m.audioOriginalBlob && (
                        <div className="text-[9px] font-mono text-cyan-400 animate-pulse mt-1 ml-1">PROCESSING VOICE...</div>
                     )}
                     
+                    {/* 4. Transcribed Text */}
                     {currentTranslation && !own && (
                        <div className="text-sm mt-1 opacity-90 italic">"{currentTranslation}"</div>
                     )}
@@ -338,28 +355,19 @@ export default function MessageList({ messages = [], currentUser = null, targetL
                             <div className="text-[14px] leading-[1.5] tracking-tight font-light">{currentTranslation}</div>
                           </>
                         ) : (
-                          <>
-                            <div className="text-slate-400 text-[13px] mb-2 opacity-60 italic">{displayOriginal}</div>
-                            <div className="text-[11px] font-mono text-brand-400 animate-pulse uppercase tracking-[0.2em]">Analyzing Frequency...</div>
-                          </>
+                          <div className="text-[11px] font-mono text-brand-400 animate-pulse uppercase tracking-[0.2em]">Analyzing Frequency...</div>
                         )}
                       </>
                     )}
                   </div>
                 )}
 
-                {/* ⚡ STATUS FOOTER: Time + Ticks */}
+                {/* Status Footer */}
                 <div className={`flex items-center gap-1.5 mt-1.5 opacity-40 text-[9px] font-mono tracking-widest ${own ? 'justify-end' : 'justify-start'}`}>
                   <span>{m.ts || new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  
-                  {/* ⚡ THE TICKS */}
                   {own && (
                     <span className="flex items-center">
-                        {m.isRead ? (
-                            <CheckCheck size={14} className="text-blue-400" /> 
-                        ) : (
-                            <Check size={14} className="text-slate-400" />
-                        )}
+                        {m.isRead ? <CheckCheck size={14} className="text-blue-400" /> : <Check size={14} className="text-slate-400" />}
                     </span>
                   )}
                 </div>

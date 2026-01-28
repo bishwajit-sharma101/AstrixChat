@@ -1,22 +1,24 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Mic, Globe, MoveRight, AudioLines } from "lucide-react";
+import { Mic, Globe, AudioLines, Sparkles, Activity, Wifi } from "lucide-react";
 
-const AudioWave = ({ color, delay }) => (
-  <div className="flex items-center gap-1 h-12">
-    {[...Array(20)].map((_, i) => (
+// --- BRIGHTER AUDIO WAVE ---
+const AudioWave = ({ color, delay, count = 20 }) => (
+  <div className="flex items-center justify-center gap-[3px] h-12">
+    {[...Array(count)].map((_, i) => (
       <motion.div
         key={i}
-        className={`w-1 rounded-full ${color}`}
+        // ⚡ CHANGE: Brighter base color, stronger shadow
+        className={`w-1 rounded-full ${color} shadow-[0_0_12px_currentColor]`}
         animate={{ 
-            height: [10, Math.random() * 40 + 10, 10],
-            opacity: [0.5, 1, 0.5] 
+            height: [10, 10 + Math.sin(i * 0.8) * 25 + Math.random() * 15, 10],
+            opacity: [0.6, 1, 0.6] // ⚡ CHANGE: Minimum opacity raised from 0.3 to 0.6
         }}
         transition={{ 
             duration: 1.5, 
             repeat: Infinity, 
             ease: "easeInOut", 
-            delay: i * 0.1 + delay 
+            delay: i * 0.05 + delay 
         }}
       />
     ))}
@@ -25,119 +27,99 @@ const AudioWave = ({ color, delay }) => (
 
 export default function FeatureTranslation() {
   return (
-    <section className="py-40 relative bg-[#030014] overflow-hidden">
+    <section className="py-40 relative bg-[#020205] overflow-hidden">
       
-      {/* Background Decor */}
-      <div className="absolute right-0 top-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
+      {/* --- STRONGER BACKGROUND GLOWS --- */}
+      <div className="absolute left-[-10%] top-1/4 w-[800px] h-[800px] bg-brand-600/15 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute right-[-10%] bottom-1/4 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-8 relative z-10">
         
-        {/* SECTION HEADER */}
-        <div className="text-center mb-24 relative z-10">
+        {/* HEADER - Increased brightness */}
+        <div className="text-center mb-32">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-mono mb-6"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-bold tracking-[0.3em] uppercase mb-8 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
           >
-            <Globe size={14} /> GLOBAL NEURAL LINK
+            <Wifi size={14} /> Neural Bridge
           </motion.div>
           
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold mb-6"
-          >
+          <h2 className="text-6xl md:text-8xl font-bold tracking-tighter leading-none mb-6">
             Language is <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
-              no longer a barrier.
+            <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-[0_0_25px_rgba(255,255,255,0.2)]">
+               no longer a barrier.
             </span>
-          </motion.h2>
-          
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-slate-400 text-lg max-w-2xl mx-auto"
-          >
-            Real-time audio-to-audio translation that preserves your emotional tone.
-            Speak Hindi, they hear Spanish. The feeling remains the same.
-          </motion.p>
+          </h2>
         </div>
 
+        {/* THE UNIT - Brighter Glass */}
+        <div className="relative max-w-6xl mx-auto">
+            {/* Background Glow Behind Card */}
+            <div className="absolute inset-10 bg-gradient-to-r from-brand-600/30 to-cyan-500/30 blur-[80px]" />
 
-        {/* THE VISUALIZATION */}
-        <div className="relative max-w-5xl mx-auto">
-            
-            {/* The Glass Container */}
-            <div className="relative bg-white/5 border border-white/10 rounded-3xl p-8 md:p-12 backdrop-blur-md overflow-hidden">
+            <div className="relative bg-[#0b0b15]/60 border border-white/20 rounded-[40px] p-12 md:p-24 backdrop-blur-3xl shadow-2xl overflow-hidden">
                 
-                {/* Grid Pattern */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20 pointer-events-none" />
+                {/* ⚡ GRID TEXTURE (Added for tech feel) */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
 
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-0">
+                <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-0">
                     
-                    {/* LEFT: INPUT (HINDI) */}
-                    <motion.div 
-                        initial={{ opacity: 0, x: -50 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        className="flex flex-col items-center gap-4"
-                    >
-                        <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-orange-300">
-                            <Mic size={24} />
+                    {/* LEFT: INPUT */}
+                    <div className="flex flex-col items-center gap-6">
+                        <div className="w-20 h-20 rounded-2xl bg-brand-500/10 border border-brand-500/40 flex items-center justify-center text-brand-400 shadow-[0_0_30px_rgba(139,92,246,0.2)]">
+                            <Mic size={32} />
                         </div>
-                        <div className="text-sm font-mono text-slate-400">INPUT: HINDI</div>
-                        <AudioWave color="bg-orange-500" delay={0} />
-                    </motion.div>
+                        <div className="text-center">
+                            <div className="text-[10px] font-bold text-brand-500 tracking-[0.2em] uppercase mb-1">Source Input</div>
+                            <div className="text-2xl font-bold text-white">HINDI</div>
+                        </div>
+                        <AudioWave color="bg-brand-400" delay={0} />
+                    </div>
 
-                    {/* CENTER: THE PRISM (PROCESSOR) */}
+                    {/* CENTER: THE REACTOR */}
                     <div className="relative">
-                        <motion.div 
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                            className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center relative"
-                        >
-                            <div className="absolute inset-0 border-t border-brand-500/50 rounded-full blur-[2px]" />
-                            <div className="w-24 h-24 rounded-full bg-brand-500/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-[0_0_50px_rgba(139,92,246,0.3)]">
-                                <AudioLines size={32} className="text-brand-400" />
-                            </div>
-                        </motion.div>
+                        {/* Connecting Beams */}
+                        <div className="hidden lg:block absolute left-[-200px] right-[-200px] top-1/2 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                         
-                        {/* Flow Arrows */}
-                        <div className="absolute top-1/2 left-[-60px] -translate-y-1/2 text-slate-600 hidden md:block">
-                            <MoveRight size={24} className="animate-pulse" />
-                        </div>
-                        <div className="absolute top-1/2 right-[-60px] -translate-y-1/2 text-slate-600 hidden md:block">
-                            <MoveRight size={24} className="animate-pulse" />
+                        <div className="w-40 h-40 rounded-full border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(255,255,255,0.1)]">
+                            <motion.div 
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                                className="absolute inset-2 border-t-2 border-brand-400 rounded-full"
+                            />
+                            <motion.div 
+                                animate={{ rotate: -360 }}
+                                transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                                className="absolute inset-6 border-b-2 border-cyan-400 rounded-full"
+                            />
+                            
+                            {/* ⚡ CENTER BRIGHT CORE */}
+                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-[0_0_50px_white]">
+                                <AudioLines size={32} className="text-black" />
+                            </div>
                         </div>
                     </div>
 
-                    {/* RIGHT: OUTPUT (SPANISH) */}
-                    <motion.div 
-                        initial={{ opacity: 0, x: 50 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.2 }}
-                        className="flex flex-col items-center gap-4"
-                    >
-                        <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-300">
-                            <Globe size={24} />
+                    {/* RIGHT: OUTPUT */}
+                    <div className="flex flex-col items-center gap-6">
+                        <div className="w-20 h-20 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.2)]">
+                            <Globe size={32} />
                         </div>
-                        <div className="text-sm font-mono text-slate-400">OUTPUT: SPANISH</div>
-                        {/* Same Wave Shape (Emotion), Different Color (Language) */}
-                        <AudioWave color="bg-blue-400" delay={0.5} />
-                    </motion.div>
+                        <div className="text-center">
+                            <div className="text-[10px] font-bold text-cyan-500 tracking-[0.2em] uppercase mb-1">Target Output</div>
+                            <div className="text-2xl font-bold text-white">SPANISH</div>
+                        </div>
+                        <AudioWave color="bg-cyan-400" delay={0.5} />
+                    </div>
 
                 </div>
 
-                {/* Bottom Label */}
-                <div className="mt-12 text-center">
-                    <div className="inline-block px-4 py-2 rounded-lg bg-black/40 border border-white/5 text-xs text-slate-500 font-mono">
-                        EMOTIONAL PRESERVATION: 99.8% ACCURACY
+                <div className="mt-16 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/50 border border-white/10 rounded-lg text-xs font-mono text-slate-400">
+                        <Activity size={12} className="text-green-400" />
+                        <span>PRESERVATION ACCURACY: 99.9%</span>
                     </div>
                 </div>
 

@@ -1,145 +1,143 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Cpu, Globe } from "lucide-react";
-import Hero3D from "../../components/landing/Hero3D"; // Import the 3D blob
-import ProblemSection from "../../components/landing/ProblemSection";
+import { Zap, Shield, Globe, ArrowRight, Cpu, Sparkles } from "lucide-react";
+// ⚡ IMPORT THE NEW COMPONENT
+import FeatureTranslation from "../../components/landing/FeatureTranslation"; 
 import FeatureCoach from "../../components/landing/FeatureCoach";
-import FeatureTranslation from "../../components/landing/FeatureTranslation";
-import FeatureDiscovery from "../../components/landing/FeatureDiscovery";
-import FooterCTA from "../../components/landing/FooterCTA";
-export default function LandingPage() {
+import FeatureVoiceClone from "../../components/landing/FeatureVoiceClone";
+const LandingPage = () => {
   return (
-    <div className="relative min-h-screen w-full bg-[#030014] text-white overflow-x-hidden selection:bg-brand-500/30">
+    <div className="min-h-screen bg-[#020205] text-white font-sans selection:bg-brand-500/30 overflow-x-hidden relative">
       
-      {/* 1. BACKGROUND NEBULA (Static fallback + 3D) */}
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none z-[1]" />
-      <div className="fixed top-[-20%] left-[-10%] w-[600px] h-[600px] bg-purple-600/30 rounded-full blur-[120px] pointer-events-none z-[0]" />
-      <div className="fixed bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none z-[0]" />
-      
-      {/* 2. THE 3D HERO ELEMENT */}
-      <div className="fixed inset-0 z-[2] flex items-center justify-center">
-         <Hero3D /> 
-      </div>
+      {/* --- CINEMATIC OVERLAYS --- */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none z-50 mix-blend-overlay" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#020205]/50 to-[#020205] z-10" />
 
-      {/* 3. NAVBAR */}
-      <nav className="relative z-50 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
-        <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
-           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-500 to-blue-500 flex items-center justify-center">
-             <Sparkles size={16} className="text-white" />
-           </div>
-           AstrixChat
+      {/* Floating Light Orbs */}
+      <motion.div 
+        animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+        transition={{ duration: 10, repeat: Infinity }}
+        className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] bg-brand-600/20 rounded-full blur-[120px] pointer-events-none" 
+      />
+
+      {/* --- NAVIGATION --- */}
+      <nav className="relative z-50 flex items-center justify-between px-8 py-8 max-w-7xl mx-auto">
+        <div className="flex items-center gap-2 group cursor-default">
+          <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center group-hover:border-brand-500/50 transition-colors">
+            <Zap size={20} className="text-white fill-white/10" />
+          </div>
+          <span className="text-xl font-bold tracking-tighter uppercase">Astrix<span className="text-brand-400">Chat</span></span>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-sm text-slate-300 font-medium">
-           <a href="#features" className="hover:text-white transition">Features</a>
-           <a href="#security" className="hover:text-white transition">Security</a>
-           <Link to="/signin" className="px-5 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition text-white">
-             Login
-           </Link>
+        
+        <div className="hidden md:flex items-center gap-8 text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500">
+          <Link to="/pricing" className="hover:text-white transition-colors">Premium</Link>
+          <a href="#" className="hover:text-white transition-colors">Security</a>
+          <a href="#" className="hover:text-white transition-colors">Network</a>
         </div>
+
+        <Link to="/signin" className="px-6 py-2.5 bg-white/5 border border-white/10 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-500">
+          Access Node
+        </Link>
       </nav>
 
-      {/* 4. HERO SECTION CONTENT */}
-      <main className="relative z-10 flex flex-col items-center justify-center min-h-[85vh] text-center px-4">
+      {/* --- HERO SECTION --- */}
+      <main className="relative z-20 max-w-7xl mx-auto px-8 pt-20 pb-32 flex flex-col items-center text-center">
         
-        {/* Status Badge */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.03] border border-white/10 mb-8 backdrop-blur-md"
         >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-          </span>
-          <span className="text-xs font-mono text-slate-300">NEURAL ENGINE V2.0 ONLINE</span>
+          <Sparkles size={14} className="text-brand-400" />
+          <span className="text-[10px] font-mono text-slate-300 uppercase tracking-[0.2em]">Neural Encryption Active</span>
         </motion.div>
 
-        {/* Main Headline */}
         <motion.h1 
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-6xl md:text-8xl font-bold tracking-tight mb-6 max-w-4xl mx-auto leading-tight"
+          transition={{ delay: 0.1 }}
+          className="text-6xl md:text-8xl font-bold tracking-tighter leading-[0.9] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40"
         >
-          Speak. The Universe <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-blue-400 to-purple-400 animate-gradient">
-            Translates.
-          </span>
+          COMMUNICATE <br />
+          <span className="italic font-light">BEYOND BORDERS.</span>
         </motion.h1>
 
-        {/* Subheadline */}
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed"
+          transition={{ delay: 0.2 }}
+          className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed mb-12"
         >
-          The first AI-native communication platform. Real-time voice translation, 
-          emotional intelligence coaching, and intent-based discovery. 
-          <span className="text-white block mt-2">Communication has evolved.</span>
+          The world's first AI-assisted multilingual communication platform. 
+          Real-time voice translation, neural identity, and total privacy.
         </motion.p>
 
-        {/* Call to Action */}
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.8 }}
-          className="flex flex-col md:flex-row gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="flex flex-col md:flex-row gap-6"
         >
           <Link 
-            to="/chat"
-            className="group relative px-8 py-4 bg-white text-black rounded-full font-bold text-lg flex items-center gap-2 hover:scale-105 transition-transform"
+            to="/signup" 
+            className="group relative px-10 py-5 bg-white text-black font-bold rounded-2xl overflow-hidden hover:scale-[1.05] transition-transform duration-500 shadow-[0_0_40px_rgba(255,255,255,0.2)]"
           >
-            Initialize Interface
-            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            <div className="absolute inset-0 rounded-full bg-white/50 blur-lg group-hover:blur-xl transition-all opacity-40 -z-10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative flex items-center gap-3">
+              <span className="group-hover:text-white transition-colors">Initialize Identity</span>
+              <ArrowRight size={20} className="group-hover:text-white transition-colors group-hover:translate-x-1 transition-transform" />
+            </div>
           </Link>
-          
-          <button className="px-8 py-4 rounded-full border border-white/10 hover:bg-white/5 backdrop-blur-sm transition text-slate-300">
-            View Protocol
-          </button>
+
+          <Link 
+            to="/pricing" 
+            className="px-10 py-5 bg-white/5 border border-white/10 rounded-2xl font-bold hover:bg-white/10 transition-all backdrop-blur-md"
+          >
+            Explore God Mode
+          </Link>
         </motion.div>
-
-        {/* Floating HUD Elements (Decorations) */}
-        <div className="absolute left-10 bottom-20 hidden lg:block">
-           <div className="p-4 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md flex items-center gap-4">
-             <div className="p-3 bg-brand-500/20 rounded-lg"><Cpu size={24} className="text-brand-400" /></div>
-             <div className="text-left">
-               <div className="text-xs text-slate-400 uppercase">Processing</div>
-               <div className="font-mono text-sm">120ms Latency</div>
-             </div>
-           </div>
-        </div>
-
-        <div className="absolute right-10 bottom-40 hidden lg:block">
-           <div className="p-4 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md flex items-center gap-4">
-             <div className="p-3 bg-blue-500/20 rounded-lg"><Globe size={24} className="text-blue-400" /></div>
-             <div className="text-left">
-               <div className="text-xs text-slate-400 uppercase">Global Nodes</div>
-               <div className="font-mono text-sm">Active</div>
-             </div>
-           </div>
-        </div>
-
       </main>
+      <FeatureCoach/>
+      {/* ⚡ FEATURE TRANSLATION COMPONENT PLACEMENT */}
+      <FeatureTranslation />
+     <FeatureVoiceClone />
+      {/* --- STATS / FEATURES BAR --- */}
+      <div className="relative z-20 border-t border-white/5 bg-white/[0.01] backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-8 py-12 grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-brand-500/10 rounded-xl border border-brand-500/20 text-brand-400">
+                <Globe size={24} />
+            </div>
+            <div>
+                <h4 className="font-bold text-sm uppercase tracking-widest mb-1">Global Core</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">Instantly bridge 50+ languages with neural voice synthesis.</p>
+            </div>
+          </div>
 
-      <ProblemSection />
-      <FeatureCoach />
-      <FeatureTranslation/>
-      <FeatureDiscovery/>
-      <FooterCTA/>
-      {/* 5. SCROLL TEASER */}
-      <motion.div 
-        animate={{ y: [0, 10, 0] }}
-        transition={{ repeat: Infinity, duration: 2 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-slate-500 text-sm flex flex-col items-center gap-2"
-      >
-        <span className="text-[10px] uppercase tracking-widest">Scroll to Decrypt</span>
-        <div className="w-[1px] h-12 bg-gradient-to-b from-slate-500 to-transparent"></div>
-      </motion.div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-400">
+                <Shield size={24} />
+            </div>
+            <div>
+                <h4 className="font-bold text-sm uppercase tracking-widest mb-1">Vault Privacy</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">Quantum-resistant encryption for every packet of data.</p>
+            </div>
+          </div>
 
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-cyan-500/10 rounded-xl border border-cyan-500/20 text-cyan-400">
+                <Cpu size={24} />
+            </div>
+            <div>
+                <h4 className="font-bold text-sm uppercase tracking-widest mb-1">Cortex AI</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">Integrated LLMs that understand context, not just words.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default LandingPage;

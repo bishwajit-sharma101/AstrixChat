@@ -3,6 +3,7 @@ import Signup from './pages/authPages/Signup';
 import Signin from './pages/authPages/Signin';
 import Chat from './pages/chatPage/Chat';
 import LandingPage from './pages/landing/LandingPage';
+import Pricing from './pages/premium/Pricing';
 // Small wrapper to protect /chat route
 
 
@@ -23,7 +24,7 @@ function App() {
 
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/" />} />
-
+        <Route path="/pricing" element={<Pricing />} />
       </Routes>
     </BrowserRouter>
   );
