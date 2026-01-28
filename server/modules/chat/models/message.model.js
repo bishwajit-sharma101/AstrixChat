@@ -12,6 +12,10 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    isRead: {
+      type: Boolean,
+      default: false
+    },
     // UPDATED: Structured content for multi-language support
     content: {
       original: {
@@ -30,5 +34,9 @@ const messageSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+messageSchema.index({ from: 1, to: 1, createdAt: -1 });
+messageSchema.index({ from: 1, createdAt: -1 });
+messageSchema.index({ to: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Message", messageSchema);

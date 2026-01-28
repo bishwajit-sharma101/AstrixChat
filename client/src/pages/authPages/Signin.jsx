@@ -3,8 +3,8 @@ import axios from "axios";
 import { useNavigate, Link } from 'react-router-dom'; 
 import { motion } from "framer-motion";
 import { Lock, Mail, ArrowRight, Sparkles } from "lucide-react";
-// Import Google login hook
 import { useGoogleLogin } from '@react-oauth/google';
+
 
 const Signin = () => {
   const navigate = useNavigate();
@@ -27,13 +27,13 @@ const Signin = () => {
     onSuccess: async (tokenResponse) => {
       setIsLoading(true);
       try {
-        // Send the access token to your backend to verify/create user
         const response = await axios.post(
           "http://localhost:5000/api/v1/auth/google", 
           { token: tokenResponse.access_token },
           { withCredentials: true }
         );
         
+
         console.log("Google Login success:", response.data);
         setTimeout(() => navigate("/chat"), 800);
       } catch (error) {
@@ -73,6 +73,7 @@ const Signin = () => {
     }
   };
 
+  // ... (Rest of JSX remains exactly the same) ...
   return (
     <div className="relative min-h-screen w-full bg-[#030014] flex items-center justify-center overflow-hidden font-sans selection:bg-brand-500/30">
       

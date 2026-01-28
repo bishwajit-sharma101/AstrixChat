@@ -1,14 +1,16 @@
-// This is a stub file. The actual logic will be implemented next.
+// 1. Core Imports
 const debug = require('debug')('app:auth:service');
-// Placeholders for User model and JWT functions
-// The path to your User model (corrected path if needed)
 const User = require('../user-management/models/user.model'); 
-// Assuming token generation logic is here for now
+const jwt = require('jsonwebtoken'); // CHANGED: Import JWT
+
+// CHANGED: Real Token Generation
 const generateToken = (userId) => {
-    // In the real implementation, this will use JWT to sign a token
     debug(`Generating token for user ID: ${userId}`);
-    // NOTE: This should be replaced with actual JWT signing logic (e.g., using 'jsonwebtoken' package)
-    return 'STUB_JWT_TOKEN_' + userId + '_ExpiresIn_7d'; 
+    // Use environment variable or fallback for dev
+    const secret = process.env.JWT_SECRET || "astrix_secret_key_fallback_123";
+    return jwt.sign({ id: userId }, secret, {
+        expiresIn: '7d', 
+    });
 };
 
 /**
@@ -17,23 +19,19 @@ const generateToken = (userId) => {
 const register = async ({ name, email, password }) => {
     debug(`Attempting to register user: ${email}`);
 
-    // 1. Check if user already exists
     const userExists = await User.findOne({ email });
 
     if (userExists) {
         debug(`Registration failed: User with email ${email} already exists.`);
         const error = new Error('User already exists with this email address.');
-        error.status = 400; // Bad Request
+        error.status = 400; 
         throw error;
     }
 
-    // 2. Create the user
-    // The pre('save') hook in the User model will automatically hash the password here.
     const user = await User.create({
         name,
         email,
         password,
-        // Default values for role and isPublic will be applied by Mongoose
     });
 
     if (user) {
@@ -46,14 +44,11 @@ const register = async ({ name, email, password }) => {
     } else {
         debug('Registration failed: User creation failed.');
         const error = new Error('Invalid user data provided.');
-        error.status = 500; // Internal Server Error
+        error.status = 500; 
         throw error;
     }
 };
 
-/**
- * STUB: Handles user login logic.
- */
 /**
  * Handles user login logic.
  */

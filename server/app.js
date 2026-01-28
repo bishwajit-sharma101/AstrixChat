@@ -4,6 +4,9 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const mongoSanitize = require('express-mongo-sanitize');
+
 const debug = require('debug')('app:server');
 
 const connectDB = require('./config/db.config');
@@ -11,46 +14,89 @@ const { notFoundHandler, errorHandler } = require('./middlewares/error.middlewar
 const { limiter } = require('./middlewares/rateLimit.middleware');
 const v1Router = require('./api/v1/index.routes');
 
+// 🔥 ENV VALIDATION
+const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'GOOGLE_CLIENT_ID'];
+const missingEnv = requiredEnv.filter(key => !process.env[key]);
+if (missingEnv.length > 0) {
+  console.error(`❌ CRITICAL ERROR: Missing ENV variables: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
+
 const app = express();
 debug('Express app initialized.');
 
 connectDB();
-console.log("MIDDLEWARE LOAD ORDER CHECK START");
 
-app.use(helmet());
-console.log("Helmet loaded");
-app.use(limiter);
-console.log("Limiter loaded");
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000"
-];
-console.log("CORS loaded");
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
+// 1. HELMET (Allow Google Popups)
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
 
-app.use(express.json());
-console.log("express.json loaded");
-app.use(express.urlencoded({ extended: true }));
-console.log("URL Encoded loaded");
-app.use(compression());
+// 2. CORS (Strict)
+const allowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
+}));
 
-console.log("Middleware loaded. Mounting routes...");
+// 3. BODY PARSERS
+app.use(express.json({ limit: '10kb' })); 
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(cookieParser());
 
-app.get("/speed", (req, res) => {
-  res.json({ success: true });
+// ⚡⚡⚡ THE FIX IS HERE ⚡⚡⚡
+// We REMOVED "app.use(mongoSanitize())"
+// We ADDED this manual middleware instead:
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    mongoSanitize.sanitize(req.body);
+  }
+  next();
 });
 
+// RATE LIMITING
+
+app.use(limiter);
+app.use(compression());
+
+// --- ROUTES ---
+app.get("/speed", (req, res) => res.json({ success: true }));
 app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'AI ChatApp Server is running smoothly!',
-    version: 'v1'
-  });
+  res.status(200).json({ message: 'AI ChatApp Server is running smoothly!', version: 'v1' });
 });
 
 app.use('/api/v1', v1Router);
+
+// ⚡ MEDIA CLEANUP
+const fs = require('fs');
+const os = require('os');
+setInterval(() => {
+    const TMP_DIR = path.join(os.tmpdir(), "astrix_audio");
+    if (fs.existsSync(TMP_DIR)) {
+        fs.readdir(TMP_DIR, (err, files) => {
+            if (err) return;
+            const now = Date.now();
+            for (const file of files) {
+                const filePath = path.join(TMP_DIR, file);
+                fs.stat(filePath, (err, stats) => {
+                    if (err) return;
+                    if (now - stats.mtimeMs > 300000) { 
+                        fs.unlink(filePath, () => {});
+                    }
+                });
+            }
+        });
+    }
+}, 600000);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -1,9 +1,16 @@
 const express = require("express");
 const router = express.Router();
+const { protect } = require("../../modules/auth/auth.middleware"); // CHANGED: Import
 
-const { saveMessage, getChatHistory } = require("./message.controller");
+const { saveMessage, getChatHistory, cacheTranslation,deleteMessage,clearChat,markMessagesAsRead } = require("./message.controller");
 
-router.post("/save", saveMessage);
-router.get("/history/:userId", getChatHistory);
+// CHANGED: Added 'protect' middleware to all routes
+router.post("/save", protect, saveMessage);
+router.get("/history/:userId", protect, getChatHistory);
+router.post("/cache_translation", protect, cacheTranslation);
+
+router.delete("/:messageId", protect, deleteMessage);
+router.post("/clear", protect, clearChat);
+router.post("/read", protect, markMessagesAsRead);
 
 module.exports = router;

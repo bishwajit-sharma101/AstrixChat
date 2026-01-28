@@ -3,68 +3,98 @@ const Message = require("./models/message.model");
 
 const saveMessage = asyncHandler(async (req, res) => {
   const { from, to, message } = req.body;
+  if (!from || !to || !message) return res.status(400).json({ success: false, message: "Missing fields" });
 
-  if (!from || !to || !message) {
-    return res.status(400).json({
-      success: false,
-      message: "from, to and message fields are required"
-    });
-  }
-
-  // UPDATED: Saving to content.original
   const saved = await Message.create({ 
-    from, 
-    to, 
-    content: { 
-      original: message 
-    } 
+    from, to, content: { original: message } 
   });
-
-  res.status(201).json({
-    success: true,
-    message: "Message saved successfully",
-    data: saved
-  });
+  res.status(201).json({ success: true, data: saved });
 });
 
 const getChatHistory = asyncHandler(async (req, res) => {
   const { userId } = req.params;
-  const { myId } = req.query;
+  const myId = req.user._id;
+  const limit = parseInt(req.query.limit) || 30; 
+  const page = parseInt(req.query.page) || 1;
+  const skip = (page - 1) * limit;
 
-  console.log("--- DEBUG: Fetching Chat History ---");
-  console.log("Target User (params):", userId);
-  console.log("My ID (query):", myId);
+  const messages = await Message.find({
+    $or: [
+      { from: myId, to: userId },
+      { from: userId, to: myId }
+    ]
+  })
+  .sort({ createdAt: -1 }) 
+  .skip(skip)
+  .limit(limit)
+  .select("from to content createdAt isRead"); // Added isRead
 
-  // 1. Validation Log
-  if (!userId || !myId) {
-    console.log("❌ Error: Missing IDs");
-    return res.status(400).json({ success: false, message: "IDs missing" });
-  }
-
-  try {
-    // 2. Query Log
-    console.log("🔍 Querying Database...");
-    const messages = await Message.find({
-      $or: [
-        { from: myId, to: userId },
-        { from: userId, to: myId }
-      ]
-    }).sort({ createdAt: 1 });
-
-    console.log(`✅ Found ${messages.length} messages`);
-
-    res.json({
-      success: true,
-      messages
-    });
-  } catch (dbError) {
-    // 3. Catch specific DB error
-    console.error("❌ Database Error Detail:", dbError.message);
-    res.status(500).json({ 
-      success: false, 
-      error: dbError.message 
-    });
-  }
+  res.json({ success: true, messages: messages.reverse() });
 });
 
-module.exports = { saveMessage, getChatHistory };
+const cacheTranslation = asyncHandler(async (req, res) => {
+  const { messageId, languageCode, translatedText } = req.body;
+  if (!messageId || !languageCode || !translatedText) return res.status(400).json({ success: false });
+
+  await Message.findByIdAndUpdate(messageId, { 
+      $set: { [`content.translations.${languageCode}`]: translatedText } 
+  });
+  res.json({ success: true });
+});
+
+// NEW: Delete a single message
+const deleteMessage = asyncHandler(async (req, res) => {
+    const { messageId } = req.params;
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+        res.status(404);
+        throw new Error("Message not found");
+    }
+
+    // Only author can delete
+    if (message.from.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error("Not authorized");
+    }
+
+    await message.deleteOne();
+    res.json({ success: true, message: "Message deleted" });
+});
+
+// NEW: Clear entire chat history
+const clearChat = asyncHandler(async (req, res) => {
+    const { targetId } = req.body;
+    const myId = req.user._id;
+
+    await Message.deleteMany({
+        $or: [
+            { from: myId, to: targetId },
+            { from: targetId, to: myId }
+        ]
+    });
+
+    res.json({ success: true, message: "Chat cleared" });
+});
+
+// NEW: Mark messages as read (API fallback for Socket)
+const markMessagesAsRead = asyncHandler(async (req, res) => {
+    const { senderId } = req.body;
+    const myId = req.user._id;
+
+    await Message.updateMany(
+        { from: senderId, to: myId, isRead: false },
+        { $set: { isRead: true } }
+    );
+
+    res.json({ success: true });
+});
+
+module.exports = { 
+    saveMessage, 
+    getChatHistory, 
+    cacheTranslation,
+    deleteMessage,
+    clearChat,
+    markMessagesAsRead
+};

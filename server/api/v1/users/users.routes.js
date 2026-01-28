@@ -1,19 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../../../modules/user-management/models/user.model");
+const { getAllUsers, blockUser, unblockUser, deleteAccount } = require("./users.controller");
+const { protect } = require("../../../modules/auth/auth.middleware");
 
-// GET ALL USERS (Except the logged-in user)
-router.get("/", async (req, res) => {
-  try {
-    const users = await User.find({}, "_id name email avatar");
-
-    res.json({
-      success: true,
-      users,
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// Protect ensures 'req.user' exists so we can hide 'myself' from the list
+router.get("/", protect, getAllUsers);
+router.post("/block", protect, blockUser);
+router.post("/unblock", protect, unblockUser);
+router.delete("/delete", protect, deleteAccount);
 
 module.exports = router;

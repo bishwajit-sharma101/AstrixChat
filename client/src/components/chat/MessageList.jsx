@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause } from "lucide-react"; 
+import { Play, Pause, Check, CheckCheck } from "lucide-react"; 
 
 // --- INTERNAL COMPONENT: CUSTOM AUDIO PLAYER ---
 const CustomAudioPlayer = ({ src, isOwn }) => {
@@ -95,32 +95,69 @@ export default function MessageList({ messages = [], currentUser = null, targetL
   const [localMessages, setLocalMessages] = useState([]);
   const processedIds = useRef(new Set());
 
-  // --- FIX START: SMART MERGE LOGIC ---
+  // --- HELPER: Save Translation to Backend ---
+  const saveTranslationToDB = async (messageId, lang, text) => {
+    if (typeof messageId === 'string' && messageId.length < 20) return; 
+
+    try {
+      await fetch("http://localhost:5000/api/v1/chat/messages/cache_translation", {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1")}` 
+        },
+        body: JSON.stringify({
+          messageId,
+          languageCode: lang,
+          translatedText: text
+        })
+      });
+    } catch (err) {
+      console.error("Failed to save translation:", err);
+    }
+  };
+
+  // --- SMART MERGE LOGIC ---
   useEffect(() => {
     setLocalMessages((prev) => {
-      // Create a map of existing messages to preserve their translation state
       const prevMap = new Map(prev.map(m => [m.id, m]));
 
       return messages.map((newMsg) => {
-        const existing = prevMap.get(newMsg.id);
+        // Normalize ID
+        const id = newMsg._id || newMsg.id;
+        const existing = prevMap.get(id);
+        
+        // 1. Check DB for the NEW target language
+        let dbTranslation = null;
+        if (newMsg.content && newMsg.content.translations && targetLang !== 'none') {
+           dbTranslation = newMsg.content.translations[targetLang];
+        }
+
         if (existing) {
-          // If we already have this message, merge the new data (like ID updates)
-          // BUT KEEP the existing translations so we don't re-trigger the API
+          // 2. Validate Existing Local State
+          const isSameLang = existing._translatedLang === targetLang;
+
           return {
             ...newMsg,
-            textTranslated: existing.textTranslated || newMsg.textTranslated,
-            audioTranslated: existing.audioTranslated || newMsg.audioTranslated,
-            // Also preserve internal loading flags to prevent flickering
-            _translatingText: existing._translatingText,
-            _translatingAudio: existing._translatingAudio
+            // Ensure we merge 'isRead' updates from socket/db
+            isRead: newMsg.isRead !== undefined ? newMsg.isRead : existing.isRead,
+            // Translation Logic
+            textTranslated: dbTranslation || (isSameLang ? existing.textTranslated : null),
+            audioTranslated: isSameLang ? existing.audioTranslated : null, 
+            _translatedLang: dbTranslation ? targetLang : (isSameLang ? existing._translatedLang : null),
+            _translatingText: isSameLang ? existing._translatingText : false,
+            _translatingAudio: isSameLang ? existing._translatingAudio : false
           };
         }
-        // If it's brand new, just return it
-        return newMsg;
+        
+        return {
+            ...newMsg,
+            textTranslated: dbTranslation || null,
+            _translatedLang: dbTranslation ? targetLang : null
+        };
       });
     });
-  }, [messages]);
-  // --- FIX END ---
+  }, [messages, targetLang]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -152,11 +189,12 @@ export default function MessageList({ messages = [], currentUser = null, targetL
       if (!targetLang || targetLang === "none") return;
 
       const sessionKey = `${m.id}-${targetLang}`;
+      if (m._translatedLang === targetLang) return; 
       if (processedIds.current.has(sessionKey)) return;
 
       // 1. Text Translation
-      // Added check: If we already have textTranslated, STOP.
-      if (m.textOriginal && !m.textTranslated && !m._translatingText) {
+      const originalText = m.content?.original || m.textOriginal;
+      if (originalText && !m.textTranslated && !m._translatingText) {
         processedIds.current.add(sessionKey);
         updateMessageById(m.id, { _translatingText: true });
         
@@ -165,15 +203,21 @@ export default function MessageList({ messages = [], currentUser = null, targetL
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              text: m.textOriginal,
+              text: originalText,
               target_lang: targetLang,
             }),
           });
           const data = await res.json();
+          const translatedResult = data.translation || data.translation_text;
+
           updateMessageById(m.id, {
-            textTranslated: data.translation || data.translation_text || null,
+            textTranslated: translatedResult || null,
+            _translatedLang: targetLang,
             _translatingText: false,
           });
+
+          if (translatedResult) saveTranslationToDB(m.id, targetLang, translatedResult);
+
         } catch (err) {
           updateMessageById(m.id, { _translatingText: false });
           processedIds.current.delete(sessionKey);
@@ -213,8 +257,12 @@ export default function MessageList({ messages = [], currentUser = null, targetL
           updateMessageById(m.id, {
             audioTranslated: translatedURL,
             textTranslated: translatedText || m.textTranslated,
+            _translatedLang: targetLang,
             _translatingAudio: false,
           });
+
+          if (translatedText) saveTranslationToDB(m.id, targetLang, translatedText);
+
         } catch (err) {
           updateMessageById(m.id, { _translatingAudio: false });
           processedIds.current.delete(audioKey);
@@ -228,7 +276,10 @@ export default function MessageList({ messages = [], currentUser = null, targetL
     <div className="flex flex-col gap-3 w-full px-4">
       <AnimatePresence initial={false}>
         {localMessages.map((m) => {
-          const own = !!m.fromMe;
+          const msgSenderId = m.fromUserId || m.from; 
+          const currentUserId = currentUser?._id || currentUser?.id;
+          const own = String(msgSenderId) === String(currentUserId);
+          
           const hasAudioOriginal = !!m.audioOriginal;
           const hasAudioTranslated = !!m.audioTranslated;
           const displayOriginal = m.content?.original || m.textOriginal || "";
@@ -252,12 +303,10 @@ export default function MessageList({ messages = [], currentUser = null, targetL
               >
                 {(hasAudioOriginal || hasAudioTranslated) ? (
                   <div className="flex flex-col gap-2 min-w-[180px]">
-                    {/* ORIGINAL AUDIO */}
                     {hasAudioOriginal && (own || !hasAudioTranslated) && (
                       <CustomAudioPlayer src={m.audioOriginal} isOwn={own} />
                     )}
 
-                    {/* TRANSLATED AUDIO */}
                     {!own && hasAudioTranslated && (
                       <>
                          {hasAudioOriginal && <div className="h-[1px] w-full bg-white/5 my-1" />}
@@ -266,18 +315,15 @@ export default function MessageList({ messages = [], currentUser = null, targetL
                       </>
                     )}
                     
-                    {/* LOADING STATE */}
                     {!own && !hasAudioTranslated && targetLang !== 'none' && (
                        <div className="text-[9px] font-mono text-cyan-400 animate-pulse mt-1 ml-1">PROCESSING VOICE...</div>
                     )}
                     
-                    {/* TRANSCRIBED TEXT */}
                     {currentTranslation && !own && (
                        <div className="text-sm mt-1 opacity-90 italic">"{currentTranslation}"</div>
                     )}
                   </div>
                 ) : (
-                  // TEXT CONTENT
                   <div className="flex flex-col">
                     {(own || targetLang === "none") ? (
                       <div className="text-[14px] leading-[1.5] tracking-tight font-light whitespace-pre-wrap">
@@ -302,8 +348,20 @@ export default function MessageList({ messages = [], currentUser = null, targetL
                   </div>
                 )}
 
-                <div className={`text-[8px] mt-1.5 opacity-30 font-mono tracking-widest ${own ? 'text-right' : 'text-left'}`}>
-                  {m.ts} // E2EE
+                {/* ⚡ STATUS FOOTER: Time + Ticks */}
+                <div className={`flex items-center gap-1.5 mt-1.5 opacity-40 text-[9px] font-mono tracking-widest ${own ? 'justify-end' : 'justify-start'}`}>
+                  <span>{m.ts || new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                  
+                  {/* ⚡ THE TICKS */}
+                  {own && (
+                    <span className="flex items-center">
+                        {m.isRead ? (
+                            <CheckCheck size={14} className="text-blue-400" /> 
+                        ) : (
+                            <Check size={14} className="text-slate-400" />
+                        )}
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.div>

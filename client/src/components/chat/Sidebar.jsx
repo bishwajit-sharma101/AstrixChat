@@ -1,34 +1,29 @@
 import React from "react";
-import { Search, Sparkles, Zap, Users, Globe, MessageSquare } from "lucide-react";
+import { Search, Sparkles, Zap, Users, Globe, MessageSquare, Check, CheckCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
-// --- New Component: AICoreStatus ---
 const AICoreStatus = () => (
     <div className="relative w-12 h-12 flex items-center justify-center">
-        {/* Outer Pulsing Ring (The AI 'Breath') */}
         <div className="absolute w-full h-full rounded-full bg-brand-500/30 opacity-70 animate-ping-slow" />
-        
-        {/* Core Icon */}
         <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-brand-600 to-purple-800 flex items-center justify-center shadow-lg shadow-purple-500/40 border border-white/10">
             <Zap size={20} className="text-white fill-yellow-300 animate-pulse" />
         </div>
     </div>
 );
-// --- End AICoreStatus ---
 
 export default function Sidebar({
     chats = [],
     onSelectChat = () => {},
     activeChatId = null,
     onlineUsers = [],
-    // New Props for Global Mode
-    viewMode = "chat", // 'chat' or 'global'
-    onViewChange = () => {}
+    viewMode = "chat", 
+    onViewChange = () => {},
+    searchTerm = "",
+    onSearchChange = () => {},
+    lastMessages = {} 
 }) {
     return (
         <aside className="w-80 h-full flex flex-col border-r border-white/5 bg-black/20 backdrop-blur-xl">
-            
-            {/* 1. AI CORE HEADER */}
             <div className="p-6 pb-2">
                 <div className="flex items-center gap-3 mb-6">
                     <AICoreStatus />
@@ -40,7 +35,6 @@ export default function Sidebar({
                     </div>
                 </div>
 
-                {/* --- MODE SWITCHER (New) --- */}
                 <div className="flex p-1 mb-4 bg-black/40 rounded-xl border border-white/5">
                     <button
                         onClick={() => onViewChange("chat")}
@@ -66,36 +60,35 @@ export default function Sidebar({
                     </button>
                 </div>
 
-                {/* SEARCH "PILL" */}
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-400 transition-colors" size={16} />
                     <input
                         className="w-full bg-black/30 border border-white/5 rounded-full pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:ring-1 focus:ring-brand-500/50 transition-all"
                         placeholder={viewMode === 'chat' ? "Search frequency..." : "Filter global stream..."}
+                        value={searchTerm}
+                        onChange={(e) => onSearchChange(e.target.value)}
                     />
                 </div>
             </div>
 
-            {/* 2. DYNAMIC USER LIST (Only show if in Chat Mode) */}
             {viewMode === "chat" ? (
                 <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 custom-scrollbar">
-                    {/* Fallback/System message */}
                     {chats.length === 0 && (
                         <div className="text-center text-slate-500 mt-10 text-sm flex flex-col items-center">
                             <Users size={16} className="mb-2" />
-                            No signals detected.
+                            {searchTerm ? "No users found." : "No signals detected."}
                         </div>
                     )}
 
                     {chats.map((u) => {
                         const isOnline = onlineUsers.includes(u._id);
                         const isActive = activeChatId === u._id;
+                        const lastMsg = lastMessages[u._id];
 
                         return (
                             <motion.button
                                 key={u._id}
                                 onClick={() => onSelectChat(u)}
-                                // Microanimation: Kinetic Hover Effect
                                 whileHover={{ x: 5, backgroundColor: 'rgba(255, 255, 255, 0.05)' }} 
                                 whileTap={{ scale: 0.98 }}
                                 className={`
@@ -103,25 +96,20 @@ export default function Sidebar({
                                     ${isActive ? "bg-brand-500/15 border border-brand-500/30" : "border border-transparent"}
                                 `}
                             >
-                                {/* 3. Active Connection Glow */}
                                 {isActive && (
                                     <motion.div 
                                         className="absolute inset-0 bg-brand-500/20 opacity-40 rounded-2xl"
-                                        animate={{ 
-                                            opacity: [0.4, 0.6, 0.4], 
-                                        }}
+                                        animate={{ opacity: [0.4, 0.6, 0.4] }}
                                         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                                     />
                                 )}
 
-                                {/* AVATAR WITH GLOW */}
                                 <div className={`relative p-[2px] rounded-full z-10 transition-all ${isActive ? 'bg-gradient-to-r from-brand-400 to-purple-500' : 'bg-transparent'}`}>
                                     <img
                                         className="w-10 h-10 rounded-full object-cover border-2 border-[#050510]"
                                         src={u.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=" + u.name}
                                         alt={u.name}
                                     />
-                                    {/* Status Dot Microanimation */}
                                     {isOnline && (
                                         <motion.span 
                                             className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#050510] rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" 
@@ -131,12 +119,36 @@ export default function Sidebar({
                                     )}
                                 </div>
 
-                                <div className="flex-1 text-left z-10">
-                                    <div className={`text-sm font-medium transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
-                                        {u.name}
+                                <div className="flex-1 text-left z-10 overflow-hidden">
+                                    <div className="flex justify-between items-center mb-0.5">
+                                        <div className={`text-sm font-medium transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
+                                            {u.name}
+                                        </div>
+                                        {/* ⚡ SHOW TIME */}
+                                        {lastMsg && (
+                                            <span className="text-[10px] text-slate-600 font-mono">
+                                                {lastMsg.time}
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="text-xs text-slate-500 truncate group-hover:text-slate-400 transition-colors">
-                                        {u.email || "Encrypted Connection"}
+                                    
+                                    {/* ⚡ SHOW LAST MESSAGE TEXT WITH TICKS */}
+                                    <div className="text-xs text-slate-500 truncate group-hover:text-slate-400 transition-colors h-4 flex items-center gap-1">
+                                        {lastMsg ? (
+                                            <>
+                                                {/* Only show ticks if I sent the last message */}
+                                                {lastMsg.isOwn && (
+                                                    <span className={lastMsg.isRead ? "text-blue-400" : "text-slate-500"}>
+                                                        {lastMsg.isRead ? <CheckCheck size={12} /> : <Check size={12} />}
+                                                    </span>
+                                                )}
+                                                <span className={(!lastMsg.isRead && !lastMsg.isOwn) ? "text-slate-200 font-semibold" : ""}>
+                                                    {lastMsg.text.substring(0, 30)}{lastMsg.text.length > 30 && "..."}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="italic opacity-50 text-[10px]">No messages yet</span>
+                                        )}
                                     </div>
                                 </div>
                             </motion.button>
@@ -144,7 +156,6 @@ export default function Sidebar({
                     })}
                 </div>
             ) : (
-                /* GLOBAL MODE SIDEBAR INFO (Optional: Show Trending topics or stats here later) */
                 <div className="flex-1 px-6 py-10 text-center text-slate-500 text-sm">
                     <Globe className="mx-auto mb-3 opacity-50" size={32} />
                     <p>Scanning global frequencies...</p>
@@ -152,7 +163,6 @@ export default function Sidebar({
                 </div>
             )}
 
-            {/* Added animation utility for the AI Core */}
             <style jsx global>{`
                 @keyframes ping-slow {
                     0%, 100% { transform: scale(1); opacity: 0.7; }
