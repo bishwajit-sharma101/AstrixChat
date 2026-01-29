@@ -1,18 +1,9 @@
 import React, { useRef, useState } from "react";
-import { Search, Sparkles, Zap, Users, Globe, MessageSquare, Check, CheckCheck, Loader2, Trash2, ShieldBan, Upload, Camera } from "lucide-react";
+import { Search, Sparkles, Zap, Globe, MessageSquare, Check, CheckCheck, Loader2, Trash2, ShieldBan, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const AICoreStatus = () => (
-    <div className="relative w-12 h-12 flex items-center justify-center">
-        <div className="absolute w-full h-full rounded-full bg-brand-500/30 opacity-70 animate-ping-slow" />
-        <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-brand-600 to-purple-800 flex items-center justify-center shadow-lg shadow-purple-500/40 border border-white/10">
-            <Zap size={20} className="text-white fill-yellow-300 animate-pulse" />
-        </div>
-    </div>
-);
-
 export default function Sidebar({
-    chats = [],
+    chats = [], 
     onSelectChat = () => {},
     activeChatId = null,
     onlineUsers = [],
@@ -21,36 +12,44 @@ export default function Sidebar({
     searchTerm = "",
     onSearchChange = () => {},
     lastMessages = {},
-    // ⚡ PAGINATION PROPS
+    // Logic & Pagination
     onLoadMoreUsers = () => {},
     hasMoreUsers = false,
     loadingUsers = false,
-    // ⚡ USER PROPS
     currentUser = null,
     onAvatarChange = () => {},
-    // ⚡ CONTEXT ACTIONS
     onBlockUser = () => {}, 
     onDeleteChat = () => {} 
 }) {
     const fileInputRef = useRef(null);
+    const scrollContainerRef = useRef(null); // Ref for the scrollable container
     const [contextMenu, setContextMenu] = useState(null);
+    const [userPage, setUserPage] = useState(1);
 
-    // ⚡ SCROLL HANDLER (Infinite Scroll)
-    const handleScroll = (e) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.target;
-        // Trigger when near bottom (within 10px)
-        if (scrollHeight - scrollTop <= clientHeight + 10 && hasMoreUsers && !loadingUsers) {
-            onLoadMoreUsers();
+    // --- SCROLL HANDLER (Infinite Scroll) ---
+    const handleScroll = () => {
+        if (!scrollContainerRef.current) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        
+        // Check if user is near the bottom (50px threshold)
+        if (scrollHeight - scrollTop <= clientHeight + 50) {
+            if (hasMoreUsers && !loadingUsers) {
+                onLoadMoreUsers();
+            }
         }
     };
 
-    // ⚡ CONTEXT MENU HANDLER (Right Click)
+    // --- CONTEXT MENU HANDLER ---
     const handleContextMenu = (e, userId) => {
-        e.preventDefault(); // Stop default browser menu
-        setContextMenu({ x: e.clientX, y: e.clientY, userId });
+        e.preventDefault();
+        // Adjust position if too close to edge (basic check)
+        const x = e.clientX > window.innerWidth - 200 ? e.clientX - 150 : e.clientX;
+        const y = e.clientY > window.innerHeight - 200 ? e.clientY - 100 : e.clientY;
+        setContextMenu({ x, y, userId });
     };
 
-    // ⚡ AVATAR UPLOAD TRIGGERS
+    // --- AVATAR UPLOAD HANDLERS ---
     const handleAvatarClick = (e) => {
         e.stopPropagation();
         fileInputRef.current?.click();
@@ -64,76 +63,113 @@ export default function Sidebar({
 
     return (
         <aside 
-            className="w-80 h-full flex flex-col border-r border-white/5 bg-black/20 backdrop-blur-xl"
-            onClick={() => setContextMenu(null)} // Close menu on click anywhere
+            className="w-full h-full flex flex-col bg-transparent relative" 
+            onClick={() => setContextMenu(null)}
         >
-            {/* --- HEADER --- */}
-            <div className="p-6 pb-2">
-                <div className="flex items-center gap-3 mb-6">
-                    
-                    {/* ⚡ CLICKABLE AVATAR */}
-                    <div className="relative group cursor-pointer z-50" onClick={handleAvatarClick}>
-                        <div className="relative w-12 h-12 flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#050510]">
-                            {currentUser?.avatar ? (
-                                <img 
-                                    src={currentUser.avatar} 
-                                    className="w-full h-full object-cover transition-opacity group-hover:opacity-50" 
-                                    alt="My DP" 
-                                />
-                            ) : (
-                                <Zap size={20} className="text-brand-400 fill-brand-400/20" />
-                            )}
+            {/* ==================== 
+                1. SIDEBAR HEADER 
+               ==================== */}
+            <div className="p-6 border-b border-white/5 flex-shrink-0">
+                
+                {/* PROFILE SECTION */}
+                <div className="flex items-center gap-4 mb-8">
+                    <div 
+                        className="relative group cursor-pointer" 
+                        onClick={handleAvatarClick}
+                    >
+                        {/* Outer Glow for Profile */}
+                        <div className="absolute inset-0 bg-brand-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        
+                        <div className="relative w-14 h-14 rounded-full border border-white/10 bg-[#050510] overflow-hidden flex items-center justify-center transition-colors group-hover:border-brand-500/30">
+                            {/* Fallback Image Logic */}
+                            <img 
+                                src={currentUser?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser?.name || 'User'}`} 
+                                className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-40" 
+                                alt="Profile" 
+                            />
                             
-                            {/* Camera Overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                                <Camera size={18} className="text-white" />
+                            {/* Upload Icon Overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <Camera size={20} className="text-white drop-shadow-md" />
                             </div>
                         </div>
                         
-                        {/* Hidden Input */}
+                        {/* Hidden File Input */}
                         <input 
                             type="file" 
                             ref={fileInputRef} 
                             className="hidden" 
-                            accept="image/*"
+                            accept="image/*" 
                             onChange={handleFileChange}
                         />
                     </div>
 
-                    <div>
-                        <h1 className="font-bold text-lg tracking-tight text-white">{currentUser?.name || "Astrix AI"}</h1>
-                        <p className="text-[10px] text-yellow-400 uppercase tracking-widest font-semibold flex items-center gap-1">
-                            <Sparkles size={10} /> NEURAL MONITORING
-                        </p>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="font-bold text-lg tracking-tight text-white truncate leading-tight">
+                            {currentUser?.name || "Neural Node"}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                            <span className="text-[10px] text-brand-300 font-mono tracking-[0.2em] uppercase opacity-80 truncate">
+                                Uplink Stable
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Mode Switcher */}
-                <div className="flex p-1 mb-4 bg-black/40 rounded-xl border border-white/5">
-                    <button onClick={() => onViewChange("chat")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all ${viewMode === "chat" ? "bg-brand-600/20 text-brand-300 border border-brand-500/20" : "text-slate-500"}`}><MessageSquare size={14} /><span>Links</span></button>
-                    <button onClick={() => onViewChange("global")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all ${viewMode === "global" ? "bg-blue-600/20 text-blue-300 border border-blue-500/20" : "text-slate-500"}`}><Globe size={14} /><span>Matrix</span></button>
+                {/* MODE TABS (Direct / Matrix) */}
+                <div className="flex p-1 mb-6 bg-white/[0.03] rounded-xl border border-white/5 backdrop-blur-sm">
+                    <button 
+                        onClick={() => onViewChange("chat")} 
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${viewMode === "chat" ? "bg-white/10 text-white shadow-lg border border-white/5" : "text-slate-500 hover:text-white hover:bg-white/5 border border-transparent"}`}
+                    >
+                        <MessageSquare size={14} /> Direct
+                    </button>
+                    <button 
+                        onClick={() => onViewChange("global")} 
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${viewMode === "global" ? "bg-white/10 text-white shadow-lg border border-white/5" : "text-slate-500 hover:text-white hover:bg-white/5 border border-transparent"}`}
+                    >
+                        <Globe size={14} /> Matrix
+                    </button>
                 </div>
 
-                {/* Search */}
+                {/* SEARCH BAR */}
                 <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input className="w-full bg-black/30 border border-white/5 rounded-full pl-10 pr-4 py-2.5 text-sm text-slate-200 outline-none focus:ring-1 focus:ring-brand-500/50" placeholder="Search..." value={searchTerm} onChange={(e) => onSearchChange(e.target.value)} />
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-brand-400 transition-colors duration-300">
+                        <Search size={16} />
+                    </div>
+                    <input 
+                        className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white placeholder:text-slate-600 focus:border-brand-500/50 focus:bg-black/40 focus:shadow-[0_0_20px_rgba(139,92,246,0.1)] outline-none transition-all duration-300" 
+                        placeholder="Scan neural frequencies..." 
+                        value={searchTerm} 
+                        onChange={(e) => onSearchChange(e.target.value)} 
+                    />
                 </div>
             </div>
 
-            {/* --- LIST AREA --- */}
+            {/* ==================== 
+                2. SCROLLABLE LIST 
+               ==================== */}
             {viewMode === "chat" ? (
                 <div 
-                    className="flex-1 overflow-y-auto px-3 py-2 space-y-1 custom-scrollbar"
-                    onScroll={handleScroll} // ⚡ ATTACH SCROLL LISTENER
+                    className="flex-1 overflow-y-auto px-4 py-2 space-y-2 custom-scrollbar"
+                    ref={scrollContainerRef} // Attached Ref Here
+                    onScroll={handleScroll} 
                 >
-                    {chats.length === 0 && (
-                        <div className="text-center text-slate-500 mt-10 text-sm flex flex-col items-center">
-                            <Users size={16} className="mb-2" />
-                            {searchTerm ? "No users found." : "No signals detected."}
+                    {/* Empty State for Search/List */}
+                    {chats.length === 0 && !loadingUsers && (
+                        <div className="flex flex-col items-center justify-center h-40 text-slate-600 space-y-3">
+                            <div className="p-3 rounded-full bg-white/5 border border-white/5">
+                                <Search size={20} />
+                            </div>
+                            <p className="text-xs uppercase tracking-widest font-mono">No signals found</p>
                         </div>
                     )}
 
+                    {/* Chat Items */}
                     {chats.map((u) => {
                         const isOnline = onlineUsers.includes(u._id);
                         const isActive = activeChatId === u._id;
@@ -142,39 +178,59 @@ export default function Sidebar({
                         return (
                             <motion.button
                                 key={u._id}
+                                layoutId={`chat-item-${u._id}`}
                                 onClick={() => onSelectChat(u)}
-                                onContextMenu={(e) => handleContextMenu(e, u._id)} // ⚡ RIGHT CLICK TRIGGER
-                                whileHover={{ x: 5, backgroundColor: 'rgba(255, 255, 255, 0.05)' }} 
-                                whileTap={{ scale: 0.98 }}
-                                className={`relative w-full flex items-center gap-3 p-3 rounded-2xl transition-colors duration-300 group overflow-hidden ${isActive ? "bg-brand-500/15 border border-brand-500/30" : "border border-transparent"}`}
+                                onContextMenu={(e) => handleContextMenu(e, u._id)} 
+                                whileHover={{ scale: 1.01, backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
+                                whileTap={{ scale: 0.99 }}
+                                className={`relative w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 border text-left group overflow-hidden ${isActive ? "bg-white/[0.06] border-white/10 shadow-lg" : "border-transparent bg-transparent"}`}
                             >
-                                {isActive && <motion.div className="absolute inset-0 bg-brand-500/20 opacity-40 rounded-2xl" animate={{ opacity: [0.4, 0.6, 0.4] }} transition={{ duration: 3, repeat: Infinity }} />}
-                                
-                                <div className={`relative p-[2px] rounded-full z-10 ${isActive ? 'bg-gradient-to-r from-brand-400 to-purple-500' : 'bg-transparent'}`}>
-                                    <img className="w-10 h-10 rounded-full object-cover border-2 border-[#050510]" src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} alt={u.name} />
-                                    {isOnline && <motion.span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#050510] rounded-full" animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />}
-                                </div>
+                                {/* Active Selection Indicator */}
+                                {isActive && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-10 w-1 bg-brand-400 rounded-r-full shadow-[0_0_15px_#a855f7]" />
+                                )}
 
-                                <div className="flex-1 text-left z-10 overflow-hidden">
-                                    <div className="flex justify-between items-center mb-0.5">
-                                        <div className={`text-sm font-medium ${isActive ? "text-white" : "text-slate-300"}`}>{u.name}</div>
-                                        {/* Time & Ticks */}
+                                {/* User Avatar */}
+                                <div className="relative flex-shrink-0">
+                                    <img 
+                                        className={`w-12 h-12 rounded-full object-cover border-2 transition-colors duration-300 ${isActive ? 'border-brand-500/40' : 'border-white/5 group-hover:border-white/20'}`} 
+                                        src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} 
+                                        alt={u.name} 
+                                    />
+                                    {isOnline && (
+                                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#0b0b15] rounded-full shadow-[0_0_8px_#22c55e]" />
+                                    )}
+                                </div>
+                                
+                                {/* Info & Last Message */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className={`text-sm font-bold truncate transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
+                                            {u.name}
+                                        </span>
                                         {lastMsg && (
-                                            <div className="flex items-center gap-1">
-                                                {lastMsg.isOwn && (
-                                                    <span className={lastMsg.isRead ? "text-blue-400" : "text-slate-500"}>
-                                                        {lastMsg.isRead ? <CheckCheck size={12} /> : <Check size={12} />}
-                                                    </span>
-                                                )}
-                                                <span className="text-[10px] text-slate-600 font-mono">{lastMsg.time}</span>
-                                            </div>
+                                            <span className={`text-[10px] font-mono whitespace-nowrap ml-2 ${isActive ? "text-brand-300" : "text-slate-600"}`}>
+                                                {lastMsg.time}
+                                            </span>
                                         )}
                                     </div>
-                                    <div className="text-xs text-slate-500 truncate h-4 flex items-center gap-1">
+                                    
+                                    <div className="text-xs truncate flex items-center gap-1.5 h-4">
                                         {lastMsg ? (
-                                            <span className={(!lastMsg.isRead && !lastMsg.isOwn) ? "text-slate-200 font-semibold" : ""}>{lastMsg.text.substring(0, 30)}</span>
+                                            <>
+                                                {lastMsg.isOwn && (
+                                                    <span className={lastMsg.isRead ? "text-blue-400" : "text-slate-600"}>
+                                                        {lastMsg.isRead ? <CheckCheck size={13} /> : <Check size={13} />}
+                                                    </span>
+                                                )}
+                                                <span className={`${isActive ? "text-slate-300" : "text-slate-500"} truncate transition-colors`}>
+                                                    {lastMsg.text}
+                                                </span>
+                                            </>
                                         ) : (
-                                            <span className="italic opacity-50 text-[10px]">No messages yet</span>
+                                            <span className="italic opacity-40 text-slate-500 flex items-center gap-1">
+                                                <Sparkles size={10} /> Initialize uplink...
+                                            </span>
                                         )}
                                     </div>
                                 </div>
@@ -182,47 +238,52 @@ export default function Sidebar({
                         );
                     })}
                     
-                    {/* ⚡ LOADER AT BOTTOM */}
+                    {/* Infinite Scroll Loader */}
                     {loadingUsers && (
-                        <div className="flex justify-center py-4">
-                            <Loader2 className="animate-spin text-brand-400" size={20} />
+                        <div className="flex justify-center py-6">
+                            <Loader2 className="animate-spin text-brand-400 opacity-60" size={20} />
                         </div>
                     )}
                 </div>
-            ) : (
-                <div className="flex-1 px-6 py-10 text-center text-slate-500 text-sm">
-                    <Globe className="mx-auto mb-3 opacity-50" size={32} />
-                    <p>Scanning global frequencies...</p>
-                </div>
+            ) : ( 
+                // Placeholder for Matrix Mode
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-600 opacity-60">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/5">
+                        <Globe size={32} className="text-slate-500" />
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest font-mono">Global Matrix Offline</p>
+                </div> 
             )}
-
-            {/* ⚡ CONTEXT MENU OVERLAY */}
+            
+            {/* ==================== 
+                3. CONTEXT MENU 
+               ==================== */}
             <AnimatePresence>
                 {contextMenu && (
                     <motion.div 
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="fixed z-50 bg-[#0f0f17] border border-white/10 rounded-xl shadow-2xl py-1 w-40 overflow-hidden"
+                        initial={{ opacity: 0, scale: 0.95, y: 5 }} 
+                        animate={{ opacity: 1, scale: 1, y: 0 }} 
+                        exit={{ opacity: 0, scale: 0.95, y: 5 }} 
+                        transition={{ duration: 0.15 }}
+                        className="fixed z-[100] bg-[#050508]/95 border border-white/10 rounded-xl shadow-2xl py-1 w-48 backdrop-blur-xl overflow-hidden" 
                         style={{ top: contextMenu.y, left: contextMenu.x }}
                     >
                         <button 
-                            onClick={() => { onDeleteChat(contextMenu.userId); setContextMenu(null); }}
-                            className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); onDeleteChat(contextMenu.userId); setContextMenu(null); }}
+                            className="w-full text-left px-4 py-3 text-xs font-medium text-red-400 hover:bg-red-500/10 flex gap-3 items-center transition-colors"
                         >
-                            <Trash2 size={14} /> Delete Chat
+                            <Trash2 size={14}/> Delete Frequency
                         </button>
+                        <div className="h-px bg-white/5" />
                         <button 
-                            onClick={() => { onBlockUser(contextMenu.userId); setContextMenu(null); }}
-                            className="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); onBlockUser(contextMenu.userId); setContextMenu(null); }}
+                            className="w-full text-left px-4 py-3 text-xs font-medium text-slate-300 hover:bg-white/5 flex gap-3 items-center transition-colors"
                         >
-                            <ShieldBan size={14} /> Block User
+                            <ShieldBan size={14}/> Block Signal
                         </button>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            <style jsx global>{`@keyframes ping-slow { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.4); opacity: 0.3; } } .animate-ping-slow { animation: ping-slow 4s cubic-bezier(0, 0, 0.2, 1) infinite; }`}</style>
         </aside>
     );
 }
