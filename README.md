@@ -39,14 +39,14 @@
 
 | **Real-Time Translation** | **Dual-Language View** |
 |:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/ad20a248-6ef9-431c-8dd2-c121f8a0589d" width="100%"> | <img src="https://github.com/user-attachments/assets/bad16de7-8d7c-4c11-9914-5c27816ed4ef" width="100%"> |
+| <img src="https://github.com/user-attachments/assets/ad20a248-6ef9-431c-8dd2-c121f8a0589d" width="100%"> | <img src="https://github.com/user-attachments/assets/3d3e46c2-16b1-4429-864b-892b4d2d113d" width="100%"> |
 
 ### 🤖 Chat with AI (@ash)
 > An intelligent assistant available directly inside conversations. Handles language correction, rephrasing, and context-aware assistance without breaking the chat flow.
 
 | **Prompting AI** | **AI Response** |
 |:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/4f751624-38b6-48e7-8027-c023df2db371" width="100%"> | <img src="https://github.com/user-attachments/assets/3d3e46c2-16b1-4429-864b-892b4d2d113d" width="100%"> |
+| <img src="https://github.com/user-attachments/assets/4f751624-38b6-48e7-8027-c023df2db371" width="100%"> | <img src="https://github.com/user-attachments/assets/f2292666-cccc-451d-bd4a-2f4609db1a45" width="100%"> |
 
 <br>
 
