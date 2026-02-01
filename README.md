@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://github.com/user-attachments/assets/33f6d966-f413-4dd9-a2a2-bcdb08210380" width="400" />
+  <img src="https://github.com/user-attachments/assets/33f6d966-f413-4dd9-a2a2-bcdb08210380" width="800" />
 
   # 🟣 AstrixChat
   **Real-Time, AI-Assisted Communication Platform**
@@ -46,7 +46,7 @@
 
 | **Prompting AI** | **AI Response** |
 |:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/4f751624-38b6-48e7-8027-c023df2db371" width="100%"> | <img src="https://github.com/user-attachments/assets/f2292666-cccc-451d-bd4a-2f4609db1a45" width="100%"> |
+| <img src="https://github.com/user-attachments/assets/6d704913-08dc-47c6-987e-7e5e7c3f9883" width="100%"> | <img src="https://github.com/user-attachments/assets/ba61acb3-2163-4228-b66d-f1e1b73f7404" width="100%"> |
 
 <br>
 
