@@ -1,155 +1,135 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/813cdbe5-7016-47fc-ba96-7fb0396a6ebb" width="90%" />
-</p>
+<div align="center">
 
-🟣 AstrixChat
+  <img src="https://github.com/user-attachments/assets/813cdbe5-7016-47fc-ba96-7fb0396a6ebb" width="200" />
 
-    Real-Time, AI-Assisted Communication Platform
+  # 🟣 AstrixChat
+  **Real-Time, AI-Assisted Communication Platform**
 
-    AstrixChat is a real-time messaging platform designed to remove language barriers and enable seamless global communication using WebSockets and AI-assisted translation.
+  <p>
+    <a href="#-key-features">Key Features</a> •
+    <a href="#-tech-stack">Tech Stack</a> •
+    <a href="#-performance--scalability">Benchmarks</a> •
+    <a href="#-system-design">Architecture</a>
+  </p>
 
-    The system focuses on low latency, high concurrency, and practical AI integration rather than demo-level features.
+  ![Status](https://img.shields.io/badge/Status-Active_Development-success?style=for-the-badge&logo=git)
+  ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+  ![Node](https://img.shields.io/badge/Node.js-v18+-green?style=for-the-badge&logo=node.js)
 
-🚀 Key Features
+  <br>
 
-💬 Real-Time Messaging with AI-Assisted Translation
+  <p align="center">
+    <i>
+      "Most chat apps focus on features. AstrixChat focuses on reliability, scalability, <br>
+      and meaningful AI integration—making global communication natural and accessible."
+    </i>
+  </p>
+</div>
 
-Low-latency, bi-directional messaging using WebSockets (Socket.IO)
+---
 
-Messages are translated in real time between users speaking different languages
+## 🚀 Overview
 
-Each participant views messages in their preferred language
+**AstrixChat** is a real-time messaging platform designed to remove language barriers and enable seamless global communication using WebSockets and AI-assisted translation. The system prioritizes **low latency**, **high concurrency**, and **practical AI integration** over demo-level gimmicks.
 
-Original message context is preserved internally for accuracy
+## 📸 Interface & Features
 
-Optimized event-driven Node.js backend designed for high concurrency
+### 💬 Real-Time AI Translation
+> Low-latency, bi-directional messaging where each participant views messages in their preferred language. Context is preserved, and the backend is optimized for high concurrency.
 
+| **Real-Time Translation** | **Dual-Language View** |
+|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/c0701428-ea95-4cfb-820f-dbbfd1a412df" width="100%"> | <img src="https://github.com/user-attachments/assets/bad16de7-8d7c-4c11-9914-5c27816ed4ef" width="100%"> |
 
-![Real-Time Translation Chat](https://github.com/user-attachments/assets/c0701428-ea95-4cfb-820f-dbbfd1a412df)
+### 🤖 Chat with AI (@ash)
+> An intelligent assistant available directly inside conversations. Handles language correction, rephrasing, and context-aware assistance without breaking the chat flow.
 
-![Dual-Language Conversation](https://github.com/user-attachments/assets/bad16de7-8d7c-4c11-9914-5c27816ed4ef)
+| **Prompting AI** | **AI Response** |
+|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/4f751624-38b6-48e7-8027-c023df2db371" width="100%"> | <img src="https://github.com/user-attachments/assets/f2292666-cccc-451d-bd4a-2f4609db1a45" width="100%"> |
 
+<br>
 
-🎙 Voice-to-Voice Translation
+## 🎙️ Voice-to-Voice Pipelines
+**Audio → Text → Translation → Audio**
 
-Users can send voice messages
+Users can send voice messages which are processed, translated, and delivered back as voice output in the recipient's language.
 
-Audio is processed, translated, and delivered back as voice output
+<div align="center">
+  <a href="https://github.com/user-attachments/assets/12b0f441-9071-4409-85ae-22b15fdec93a">
+    <img src="https://github.com/user-attachments/assets/813cdbe5-7016-47fc-ba96-7fb0396a6ebb" width="80%" alt="Watch Demo Video" />
+    <br>
+    <i>▶️ Click to Watch Demo</i>
+  </a>
+</div>
 
-Supports audio → text → translation → audio pipelines
+---
 
+## ⚡ Performance & Scalability
 
-[![AstrixChat Demo](https://github.com/user-attachments/assets/813cdbe5-7016-47fc-ba96-7fb0396a6ebb)](https://github.com/user-attachments/assets/12b0f441-9071-4409-85ae-22b15fdec93a)
+We take engineering seriously. The system has been rigorously tested using **Autocannon**.
 
+* **1,700+ requests/sec** sustained message ingestion on a single server.
+* **Sub-60ms** write latency under load.
+* **Zero errors** during benchmark stress testing.
+* **Optimized MongoDB** compound indexing to resolve bottlenecks.
 
-🤖 Chat with AI (@ash)
+| **Login Load Test** | **Message Ingestion Test** |
+|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/406c7101-3d9b-4af1-be7d-1eab64e4706d" width="100%"> | <img src="https://github.com/user-attachments/assets/49313158-4410-4d7f-b116-eff27a299416" width="100%"> |
 
-AI assistant available directly inside conversations using @ash
+---
 
-Supports:
+## 🛠 Tech Stack
 
-Language correction
+### **Frontend**
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-Message rephrasing
+### **Backend**
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge)
+![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)
 
-Context-aware assistance
+### **Database & AI**
+![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+![OpenAI](https://img.shields.io/badge/LLM_Integration-412991?style=for-the-badge&logo=openai&logoColor=white)
 
-Designed to assist users without interrupting real-time flow
+---
 
+## 🧠 System Design & Security
 
-![Chat with AI - Prompt](https://github.com/user-attachments/assets/4f751624-38b6-48e7-8027-c023df2db371)
+### **Highlights**
+* **Event-Driven Architecture:** Uses WebSocket layers for efficient concurrency handling.
+* **Optimistic UI:** AI pipelines mask processing delays, making the app feel instant.
+* **Separation of Concerns:** Clear split between REST APIs and real-time channels.
 
-![Chat with AI - Response](https://github.com/user-attachments/assets/f2292666-cccc-451d-bd4a-2f4609db1a45)
+### **Security**
+* 🔐 **Bcrypt Hashing** for secure authentication.
+* 🛡️ **Prioritized Security** over raw login throughput (intentional trade-off).
+* 🚫 **Non-Blocking Flows** ensures auth doesn't stop real-time messaging.
 
+---
 
-⚡ Performance & Scalability
+## 📂 Project Structure
 
-Sustained 1,700+ requests/sec for message ingestion during controlled load testing on a single server
-
-Observed sub-60ms write latency under load
-
-Resolved database bottlenecks using MongoDB compound indexing
-
-Benchmarked using Autocannon with zero errors
-
-
-![Load Test Results - Login](https://github.com/user-attachments/assets/406c7101-3d9b-4af1-be7d-1eab64e4706d)
-
-![Load Test Results - Message Ingestion](https://github.com/user-attachments/assets/49313158-4410-4d7f-b116-eff27a299416)
-
-
-🔐 Security Considerations
-
-Secure authentication using bcrypt hashing
-
-Intentional trade-off: security prioritized over raw login throughput
-
-Event-driven design prevents blocking critical real-time flows
-
-
-🧠 System Design Highlights
-
-Event-driven WebSocket layer for efficient concurrency handling
-
-Clear separation of REST APIs and real-time channels
-
-Optimized data flow to minimize processing latency
-
-AI pipelines designed to mask processing delays using optimistic UI updates
-
-
-📌 (Architecture diagram coming soon)
-
-🛠 Tech Stack
-
-Frontend
-
-React
-
-Next.js
-
-Tailwind CSS
-
-Backend
-
-Node.js
-
-Express
-
-Socket.IO
-
-Database
-
-MongoDB (Mongoose)
-
-AI & Tooling
-
-LLM-based translation & language processing
-
-Autocannon (Load Testing)
-
-Git & GitHub
-
-📂 Project Structure
+```bash
 astrixchat/
 ├── client/        # Frontend (React / Next.js)
 ├── server/        # Backend (Node.js, WebSockets)
 └── README.md
 
-🎯 Why AstrixChat?
-
-Most chat apps focus on features.
-AstrixChat focuses on reliability, scalability, and meaningful AI integration—making global communication natural and accessible.
-
-📌 Status
-
-Core messaging & AI pipelines implemented
-
-Load tested & benchmarked
-
-Actively evolving architecture
+<div align="center">
 
 👤 Author
 
 Bishwajit Sharma
+
+
 Full-Stack Developer focused on real-time systems, performance, and scalable web architecture.
+
+LinkedIn • GitHub
+
+</div>
+
