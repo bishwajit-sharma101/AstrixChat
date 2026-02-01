@@ -57,7 +57,7 @@ Users can send voice messages which are processed, translated, and delivered bac
 
 <div align="center">
   <a href="https://github.com/user-attachments/assets/12b0f441-9071-4409-85ae-22b15fdec93a">
-    <img src="https://github.com/user-attachments/assets/813cdbe5-7016-47fc-ba96-7fb0396a6ebb" width="80%" alt="Watch Demo Video" />
+    <img src="https://github.com/user-attachments/assets/33f6d966-f413-4dd9-a2a2-bcdb08210380" width="80%" alt="Watch Demo Video" />
     <br>
     <i>▶️ Click to Watch Demo</i>
   </a>
