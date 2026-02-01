@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // ==================================================================================
 const LANGUAGES = [
     { code: "none", name: "Universal", native: "No Translation" },
+    { code: "en", name: "English", native: "English" },
     { code: "hi", name: "Hindi", native: "हिन्दी" },
     { code: "es", name: "Spanish", native: "Español" },
     { code: "fr", name: "French", native: "Français" },
