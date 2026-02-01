@@ -118,7 +118,7 @@ We take engineering seriously. The system has been rigorously tested using **Aut
 astrixchat/
 ├── client/        # Frontend (React / Next.js)
 ├── server/        # Backend (Node.js, WebSockets)
-└── README.md
+└── README.md```
 
 ---
 
