@@ -1,12 +1,13 @@
 const asyncHandler = require("express-async-handler");
 const Message = require("./models/message.model");
+const xss = require("xss"); // ⚡ FIX: Added for security
 
 const saveMessage = asyncHandler(async (req, res) => {
   const { from, to, message } = req.body;
   if (!from || !to || !message) return res.status(400).json({ success: false, message: "Missing fields" });
 
   const saved = await Message.create({ 
-    from, to, content: { original: message } 
+    from, to, content: { original: xss(message) } 
   });
   res.status(201).json({ success: true, data: saved });
 });
@@ -35,6 +36,18 @@ const getChatHistory = asyncHandler(async (req, res) => {
 const cacheTranslation = asyncHandler(async (req, res) => {
   const { messageId, languageCode, translatedText } = req.body;
   if (!messageId || !languageCode || !translatedText) return res.status(400).json({ success: false });
+
+  // ⚡ FIX: Verify user is sender or receiver (IDOR Protection)
+  const message = await Message.findById(messageId);
+  if (!message) {
+      res.status(404);
+      throw new Error("Message not found");
+  }
+
+  if (message.from.toString() !== req.user._id.toString() && message.to.toString() !== req.user._id.toString()) {
+      res.status(403);
+      throw new Error("Not authorized to cache translation for this message");
+  }
 
   await Message.findByIdAndUpdate(messageId, { 
       $set: { [`content.translations.${languageCode}`]: translatedText } 

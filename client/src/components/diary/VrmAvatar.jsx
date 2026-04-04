@@ -85,7 +85,7 @@ const EXPRESSION_PRESETS = {
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 
-function VrmModel({ vrmUrl, animationUrl, emotion, isTalking }) {
+function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
     const [vrm, setVrm] = useState(null);
     const mixerRef = useRef(null);
     const currentActionRef = useRef(null);
@@ -161,6 +161,7 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking }) {
 
             setVrm(newVrm);
             vrmRef.current = newVrm;
+            if (onLoad) onLoad(true);
         }, undefined, (err) => console.error(err));
 
         return () => {
@@ -380,23 +381,27 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking }) {
         }
     });
 
-    return vrm ? <primitive object={vrm.scene} position={[0, -0.95, 0]} /> : null;
+    return vrm ? <primitive object={vrm.scene} position={[0, -1.01, 0]} /> : null;
 }
 
 export default function VrmAvatar({
     emotion = "neutral",
     animation = "",
     isTalking = false,
-    modelUrl = "/models/Reina.vrm"
+    modelUrl = "/models/Reina.vrm",
+    onLoad = () => {}
 }) {
-    const animUrl = animation
-        ? (animation.endsWith('.vrma') ? `/animations/${animation}` : `/animations/${animation}.vrma`)
+    // Default to VRMA_07 for idle if no specific anim provided and not talking
+    const activeAnim = animation || (isTalking ? "" : "VRMA_07");
+
+    const animUrl = activeAnim
+        ? (activeAnim.endsWith('.vrma') ? `/animations/${activeAnim}` : `/animations/${activeAnim}.vrma`)
         : null;
 
     return (
         <div className="w-full h-full relative bg-transparent">
             <Canvas
-                camera={{ position: [0, 0.15, 3.1], fov: 21 }}
+                camera={{ position: [0, 0.15, 1.85], fov: 21 }}
                 style={{ background: 'transparent' }}
             >
                 <ambientLight intensity={1.4} />
@@ -410,6 +415,7 @@ export default function VrmAvatar({
                     animationUrl={animUrl}
                     emotion={emotion}
                     isTalking={isTalking}
+                    onLoad={onLoad}
                 />
 
                 <OrbitControls

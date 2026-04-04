@@ -15,7 +15,7 @@ const { limiter } = require('./middlewares/rateLimit.middleware');
 const v1Router = require('./api/v1/index.routes');
 
 // 🔥 ENV VALIDATION
-const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'GOOGLE_CLIENT_ID'];
+const requiredEnv = ['MONGO_URI', 'JWT_SECRET', 'GOOGLE_CLIENT_ID', 'GEMINI_API_KEY'];
 const missingEnv = requiredEnv.filter(key => !process.env[key]);
 if (missingEnv.length > 0) {
   console.error(`❌ CRITICAL ERROR: Missing ENV variables: ${missingEnv.join(', ')}`);
@@ -56,17 +56,30 @@ app.use(cookieParser());
 // ⚡⚡⚡ THE FIX IS HERE ⚡⚡⚡
 // We REMOVED "app.use(mongoSanitize())"
 // We ADDED this manual middleware instead:
+// ⚡ FIX: Comprehensive NoSQL Injection Protection
 app.use((req, res, next) => {
-  if (req.body && typeof req.body === 'object') {
-    mongoSanitize.sanitize(req.body);
-  }
+  if (req.body) mongoSanitize.sanitize(req.body);
+  if (req.query) mongoSanitize.sanitize(req.query);
+  if (req.params) mongoSanitize.sanitize(req.params);
   next();
 });
 
 // RATE LIMITING
 
 app.use(limiter);
-app.use(compression());
+// ⚡ COMPRESSION 
+// WARNING: Disabling compression for AI Streaming routes to prevent buffering.
+app.use(compression({
+  filter: (req, res) => {
+    if (req.originalUrl && req.originalUrl.includes('/ai/dolphin/chat')) {
+      return false; // Skip compression for streaming
+    }
+    if (req.headers['x-no-compression']) {
+      return false; // Fallback manual trigger
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // --- ROUTES ---
 app.get("/speed", (req, res) => res.json({ success: true }));

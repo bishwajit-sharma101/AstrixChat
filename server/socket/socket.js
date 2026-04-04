@@ -63,7 +63,11 @@ module.exports = function initSocket(server) {
 
       if (!token) return next(new Error("Authentication error: No token provided"));
 
-      const secret = process.env.JWT_SECRET || "astrix_secret_key_fallback_123";
+      const secret = (process.env.JWT_SECRET || "").trim();
+      if (!secret) {
+          console.error("❌ CRITICAL: JWT_SECRET not found in environment!");
+          return next(new Error("Internal server configuration error"));
+      }
       const decoded = jwt.verify(token, secret);
       socket.userId = decoded.id; 
       next();
@@ -154,12 +158,24 @@ module.exports = function initSocket(server) {
       }
     });
 
-    socket.on("delete-message", ({ messageId, toUserId }) => {
-        if (toUserId && mongoose.Types.ObjectId.isValid(toUserId)) {
-            const targetSocketId = onlineUsers.get(toUserId);
-            if (targetSocketId) {
-                io.to(targetSocketId).emit("message-deleted", { messageId });
+    socket.on("delete-message", async ({ messageId, toUserId }) => {
+        try {
+            if (!messageId || !mongoose.Types.ObjectId.isValid(messageId)) return;
+
+            // ⚡ FIX: Verify ownership before emitting deletion signal
+            const message = await Message.findById(messageId);
+            if (!message || message.from.toString() !== socket.userId) {
+                return; // Silently fail to avoid leaking info
             }
+
+            if (toUserId && mongoose.Types.ObjectId.isValid(toUserId)) {
+                const targetSocketId = onlineUsers.get(toUserId);
+                if (targetSocketId) {
+                    io.to(targetSocketId).emit("message-deleted", { messageId });
+                }
+            }
+        } catch (e) {
+            console.error("Delete socket error", e);
         }
     });
 

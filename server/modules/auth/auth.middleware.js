@@ -25,7 +25,12 @@ const protect = asyncHandler(async (req, res, next) => {
     }
 
     try {
-        const secret = process.env.JWT_SECRET || "astrix_secret_key_fallback_123";
+        const secret = (process.env.JWT_SECRET || "").trim();
+        if (!secret) {
+            console.error("❌ CRITICAL: JWT_SECRET not found in environment!");
+            res.status(500);
+            throw new Error('Internal server configuration error');
+        }
         const decoded = jwt.verify(token, secret);
 
         // Attach user to request, exclude password

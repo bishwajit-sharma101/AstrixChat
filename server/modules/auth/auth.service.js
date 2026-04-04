@@ -6,8 +6,11 @@ const jwt = require('jsonwebtoken'); // CHANGED: Import JWT
 // CHANGED: Real Token Generation
 const generateToken = (userId) => {
     debug(`Generating token for user ID: ${userId}`);
-    // Use environment variable or fallback for dev
-    const secret = process.env.JWT_SECRET || "astrix_secret_key_fallback_123";
+    const secret = (process.env.JWT_SECRET || "").trim();
+    if (!secret) {
+        console.error("❌ CRITICAL: JWT_SECRET not found in environment!");
+        throw new Error('Internal server configuration error');
+    }
     return jwt.sign({ id: userId }, secret, {
         expiresIn: '7d', 
     });

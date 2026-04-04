@@ -2,6 +2,7 @@ const Post = require('./models/post.model');
 const User = require('../user-management/models/user.model');
 const { GoogleGenAI } = require("@google/genai");
 const { TRANSLATION_SYSTEM_PROMPT } = require("../../utils/geminiPrompt");
+const xss = require('xss'); // ⚡ FIX: Added for security
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -38,61 +39,52 @@ exports.getUserPosts = async (req, res) => {
 exports.createPost = async (req, res) => {
   try {
     const { content, targetLanguages, mediaUrl, mediaType } = req.body;
-    const authorId = req.user.id; // from auth middleware
+    const authorId = req.user.id;
+    const cleanContent = xss(content || "");
+
+    // ⚡ FIX: Limit languages to prevent API abuse/billing spikes
+    const MAX_LANGUAGES = 5;
+    const sanitizedLangs = (targetLanguages || []).slice(0, MAX_LANGUAGES);
 
     const post = new Post({
       author: authorId,
-      content: { original: content, translations: {} },
-      targetLanguages: targetLanguages || [],
+      content: { original: cleanContent, translations: {} },
+      targetLanguages: sanitizedLangs,
       mediaUrl,
       mediaType: mediaType || 'text',
       originLanguage: 'en'
     });
 
-    // Translate synchronously for simplicity and immediate feedback,
-    // Alternatively, could be offloaded to background job.
-    if (targetLanguages && targetLanguages.length > 0 && content) {
-      const promises = targetLanguages.map(async (lang) => {
-        try {
-          const response = await ai.models.generateContent({
-            model: "gemini-2.0-flash",
-            systemInstruction: TRANSLATION_SYSTEM_PROMPT,
-            contents: [{ role: "user", parts: [{ text: `Translate this: "${content}" to ${lang}` }] }],
-            generationConfig: { temperature: 0.2, topP: 0.9, maxOutputTokens: 1024 }
-          });
-          const translatedText = response.text?.trim();
-          if (translatedText) {
-            post.content.translations.set(lang, translatedText);
-          }
-        } catch (err) {
-          console.warn(`Gemini translation failed for ${lang}, falling back to local model. Error:`, err.message);
-          try {
-            const localRes = await fetch("http://127.0.0.1:7861/translate_text", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    text: content,
-                    target_lang: lang
-                })
-            });
-            const localData = await localRes.json();
-            const localTranslated = localData.translation || localData.translation_text;
-            if (localTranslated) {
-                post.content.translations.set(lang, localTranslated);
-                console.log(`Fallback local translation succeeded for ${lang}`);
-            }
-          } catch (localErr) {
-            console.error(`Local fallback also failed for ${lang}:`, localErr.message);
-          }
-        }
-      });
-      await Promise.all(promises);
-    }
-
+    // Save immediately and return response to user (Non-blocking)
     await post.save();
     const populatedPost = await post.populate('author', 'name avatar isOnline');
-
     res.status(201).json({ success: true, post: populatedPost });
+
+    // ⚡ FIX: Offload translation to background (Resilience & Scalability)
+    if (sanitizedLangs.length > 0 && cleanContent) {
+        setImmediate(async () => {
+            const promises = sanitizedLangs.map(async (lang) => {
+                try {
+                    const response = await ai.models.generateContent({
+                        model: "gemini-2.0-flash",
+                        systemInstruction: TRANSLATION_SYSTEM_PROMPT,
+                        contents: [{ role: "user", parts: [{ text: `Translate this: "${cleanContent}" to ${lang}` }] }],
+                        generationConfig: { temperature: 0.2, topP: 0.9, maxOutputTokens: 1024 }
+                    });
+                    const translatedText = response.text?.trim();
+                    if (translatedText) {
+                        await Post.findByIdAndUpdate(post._id, {
+                            $set: { [`content.translations.${lang}`]: translatedText }
+                        });
+                    }
+                } catch (err) {
+                    console.warn(`Background translation failed for ${lang}. Error:`, err.message);
+                }
+            });
+            await Promise.all(promises);
+            console.log(`🌙 Background translation completed for post ${post._id}`);
+        });
+    }
   } catch (error) {
     console.error("Error creating post:", error);
     res.status(500).json({ success: false, error: "Failed to create post" });
@@ -153,7 +145,7 @@ exports.addComment = async (req, res) => {
 
     const newComment = {
       user: req.user.id,
-      text,
+      text: xss(text || ""), // ⚡ FIX: Sanitize comments
       time: new Date()
     };
     
