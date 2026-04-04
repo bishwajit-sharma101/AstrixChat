@@ -5,6 +5,7 @@ import Chat from './pages/chatPage/Chat';
 import LandingPage from './pages/landing/LandingPage';
 import Pricing from './pages/premium/Pricing';
 import DiaryPage from './pages/diaryPage/DiaryPage';
+import ReinaPage from './pages/reinaPage/ReinaPage';
 import { ActivityTrackerProvider } from './contexts/ActivityTrackerContext';
 
 
@@ -23,6 +24,7 @@ function App() {
         {/* Protected Chat Page */}
         <Route path="/chat" element={<Chat />}/>
         <Route path="/diary" element={<DiaryPage />}/>
+        <Route path="/reina" element={<ReinaPage />}/>
 
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/" />} />

@@ -1,0 +1,346 @@
+/* ================================================================
+   ReinaPage — Yandere Dark Aesthetic
+   Character centered, glass input at bottom
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* Root page */
+.reina-page {
+    --yandere-red: #dc2626;
+    --yandere-dark-red: #7f1d1d;
+    --yandere-deep: #0a0000;
+    --yandere-text: #fecaca;
+    --yandere-text-dim: rgba(254, 202, 202, 0.4);
+
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    width: 100%;
+    background: radial-gradient(ellipse at 50% 0%, #1a0000 0%, #0a0000 40%, #020000 100%);
+    color: var(--yandere-text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Ambient background glow */
+.reina-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(127, 29, 29, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(153, 27, 27, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ---- Top Bar ---- */
+.reina-top-bar {
+    position: relative;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(220, 38, 38, 0.08);
+    background: rgba(10, 0, 0, 0.6);
+    backdrop-filter: blur(16px);
+    flex-shrink: 0;
+}
+
+.reina-top-bar .back-btn {
+    color: #fca5a5;
+    background: none;
+    border: none;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.3s;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reina-top-bar .back-btn:hover { color: #fff; }
+
+.reina-top-bar .title {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fca5a5;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+}
+
+/* ---- Avatar Wrapper (full remaining space) ---- */
+.reina-avatar-wrapper {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    z-index: 1;
+}
+
+/* Vignettes */
+.reina-vignette-top {
+    position: absolute; top: 0; left: 0; right: 0; height: 60px;
+    background: linear-gradient(to bottom, rgba(10, 0, 0, 0.5), transparent);
+    z-index: 5; pointer-events: none;
+}
+.reina-vignette-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 140px;
+    background: linear-gradient(to top, rgba(10, 0, 0, 0.95), rgba(10, 0, 0, 0.4) 50%, transparent);
+    z-index: 5; pointer-events: none;
+}
+.reina-vignette-left {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 60px;
+    background: linear-gradient(to right, rgba(10, 0, 0, 0.5), transparent);
+    z-index: 5; pointer-events: none;
+}
+.reina-vignette-right {
+    position: absolute; top: 0; bottom: 0; right: 0; width: 60px;
+    background: linear-gradient(to left, rgba(10, 0, 0, 0.5), transparent);
+    z-index: 5; pointer-events: none;
+}
+
+/* ---- Speech Bubble (floating above input) ---- */
+.reina-speech-bubble {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    max-width: 480px;
+    width: 90%;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 18px;
+    background: rgba(15, 0, 0, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(220, 38, 38, 0.12);
+    border-radius: 16px;
+    animation: bubble-appear 0.4s ease-out;
+}
+
+.reina-speech-bubble .speech-bubble-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #991b1b, #450a0a);
+    border: 1px solid rgba(220, 38, 38, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.reina-speech-bubble p {
+    margin: 0;
+    font-family: 'Cinzel', serif;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #fecaca;
+    opacity: 0.9;
+}
+
+@keyframes bubble-appear {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ---- Bottom Input (centered glass blur) ---- */
+.reina-bottom-input {
+    position: relative;
+    z-index: 30;
+    padding: 16px 20px 24px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.reina-input-glass {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 520px;
+    background: rgba(20, 0, 0, 0.35);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(220, 38, 38, 0.12);
+    border-radius: 28px;
+    padding: 8px 8px 8px 22px;
+    transition: all 0.3s ease;
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.reina-input-glass:focus-within {
+    border-color: rgba(220, 38, 38, 0.3);
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.4),
+        0 0 24px rgba(220, 38, 38, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.reina-input-glass input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: #fecaca;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.3px;
+}
+
+.reina-input-glass input::placeholder {
+    color: rgba(220, 38, 38, 0.25);
+    font-style: italic;
+    font-size: 13px;
+}
+
+.reina-input-glass .send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.35), rgba(220, 38, 38, 0.1));
+    color: #fca5a5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+
+.reina-input-glass .send-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.4), rgba(220, 38, 38, 0.2));
+    color: #fff;
+    box-shadow: 0 0 16px rgba(220, 38, 38, 0.25);
+    transform: scale(1.05);
+}
+
+.reina-input-glass .send-btn:disabled {
+    opacity: 0.15;
+    cursor: not-allowed;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(220, 38, 38, 0.2);
+    border-top-color: #dc2626;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---- Speaking Indicator ---- */
+.reina-speaking-badge {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: rgba(10, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(220, 38, 38, 0.15);
+    border-radius: 20px;
+    animation: speaking-pulse 2s ease-in-out infinite;
+}
+
+@keyframes speaking-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(220, 38, 38, 0.15); }
+    50% { box-shadow: 0 0 20px rgba(220, 38, 38, 0.35); }
+}
+
+.speaking-bars {
+    display: flex; gap: 2px; align-items: flex-end;
+}
+
+.speaking-bars span {
+    width: 3px; border-radius: 2px; background: #dc2626;
+    animation: speaking-bar 0.8s ease-in-out infinite;
+}
+.speaking-bars span:nth-child(1) { height: 8px; animation-delay: 0s; }
+.speaking-bars span:nth-child(2) { height: 12px; animation-delay: 0.15s; }
+.speaking-bars span:nth-child(3) { height: 6px; animation-delay: 0.3s; }
+.speaking-bars span:nth-child(4) { height: 10px; animation-delay: 0.1s; }
+
+@keyframes speaking-bar {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
+    50% { transform: scaleY(1.3); opacity: 1; }
+}
+
+.speaking-label {
+    font-size: 10px; color: #fca5a5; letter-spacing: 2px;
+    text-transform: uppercase; font-family: 'Inter', sans-serif; font-weight: 500;
+}
+
+/* ---- Emotion Badge ---- */
+.reina-emotion-badge {
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    padding: 3px 12px;
+    background: rgba(10, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(220, 38, 38, 0.12);
+    border-radius: 12px;
+    font-size: 10px;
+    color: #fca5a5;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+    opacity: 0.6;
+}
+
+/* ---- Floating Hearts ---- */
+.reina-deco-hearts {
+    position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden;
+}
+
+.floating-heart {
+    position: absolute; font-size: 14px; opacity: 0;
+    animation: float-heart 8s ease-in-out infinite;
+}
+
+.floating-heart:nth-child(1) { left: 5%; top: 20%; animation-delay: 0s; }
+.floating-heart:nth-child(2) { left: 92%; top: 35%; animation-delay: 2s; }
+.floating-heart:nth-child(3) { left: 12%; top: 65%; animation-delay: 4s; }
+.floating-heart:nth-child(4) { left: 88%; top: 55%; animation-delay: 1s; }
+.floating-heart:nth-child(5) { left: 50%; top: 80%; animation-delay: 3s; }
+
+@keyframes float-heart {
+    0% { opacity: 0; transform: translateY(20px) scale(0.5); }
+    15% { opacity: 0.12; }
+    50% { opacity: 0.06; transform: translateY(-30px) scale(1); }
+    85% { opacity: 0.1; }
+    100% { opacity: 0; transform: translateY(20px) scale(0.5); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+    .reina-input-glass { max-width: 92%; }
+    .reina-speech-bubble { max-width: 88%; bottom: 20px; }
+}

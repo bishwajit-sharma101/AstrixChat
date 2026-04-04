@@ -59,10 +59,12 @@ router.get("/raw/:filename", (req, res) => {
 const geminiRoutes = require("./gemini.routes");
 const localRoutes = require("./local_translation.routes");
 const coachRoutes = require("./coach.routes");
+const karmaRoutes = require("./karma.routes");
 
 // Apply middleware
 router.use("/translate_text", protect, limiter, geminiRoutes);
 router.use("/translate_text", protect, limiter, localRoutes);
 router.use("/analyze-chat", protect, limiter, coachRoutes);
+router.use("/karma", protect, limiter, karmaRoutes);
 
 module.exports = router;
