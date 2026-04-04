@@ -138,21 +138,21 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking }) {
                     // Set initial resting pose — arms DOWN from T-pose
                     // VRM T-pose has arms horizontal (rotation.z = 0)
                     // Negative Z on left arm = down, Positive Z on right arm = down
-                    // Use ~0.35 rad for a relaxed A-stance (arms slightly away from body)
+                    // Use ~0.75 rad for arms mostly at sides, natural standing
                     if (bonesRef.current.leftArm) {
-                        bonesRef.current.leftArm.rotation.z = -0.35;
-                        bonesRef.current.leftArm.rotation.x = 0.05;
+                        bonesRef.current.leftArm.rotation.z = -0.75;
+                        bonesRef.current.leftArm.rotation.x = 0.08;
                     }
                     if (bonesRef.current.rightArm) {
-                        bonesRef.current.rightArm.rotation.z = 0.35;
-                        bonesRef.current.rightArm.rotation.x = 0.05;
+                        bonesRef.current.rightArm.rotation.z = 0.75;
+                        bonesRef.current.rightArm.rotation.x = 0.08;
                     }
                     // Slight elbow bend for natural look
                     if (bonesRef.current.leftLowerArm) {
-                        bonesRef.current.leftLowerArm.rotation.y = 0.1;
+                        bonesRef.current.leftLowerArm.rotation.y = 0.15;
                     }
                     if (bonesRef.current.rightLowerArm) {
-                        bonesRef.current.rightLowerArm.rotation.y = -0.1;
+                        bonesRef.current.rightLowerArm.rotation.y = -0.15;
                     }
                 } catch (e) {
                     console.warn("Could not find all bones for procedural animation:", e);
@@ -258,21 +258,21 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking }) {
             if (bones.chest) {
                 bones.chest.rotation.x = Math.sin(t * 1.2 + 0.5) * 0.008;
             }
-            // Arms in relaxed A-stance with subtle natural sway
+            // Arms at sides with subtle natural sway
             if (bones.leftArm) {
-                bones.leftArm.rotation.z = -0.35 + Math.sin(t * 0.8) * 0.015;
-                bones.leftArm.rotation.x = 0.05 + Math.sin(t * 0.6 + 1) * 0.01;
+                bones.leftArm.rotation.z = -0.75 + Math.sin(t * 0.8) * 0.015;
+                bones.leftArm.rotation.x = 0.08 + Math.sin(t * 0.6 + 1) * 0.01;
             }
             if (bones.rightArm) {
-                bones.rightArm.rotation.z = 0.35 + Math.sin(t * 0.9 + 2) * 0.015;
-                bones.rightArm.rotation.x = 0.05 + Math.sin(t * 0.65 + 3) * 0.01;
+                bones.rightArm.rotation.z = 0.75 + Math.sin(t * 0.9 + 2) * 0.015;
+                bones.rightArm.rotation.x = 0.08 + Math.sin(t * 0.65 + 3) * 0.01;
             }
             // Slight elbow micro-movement
             if (bones.leftLowerArm) {
-                bones.leftLowerArm.rotation.y = 0.1 + Math.sin(t * 0.5 + 1) * 0.008;
+                bones.leftLowerArm.rotation.y = 0.15 + Math.sin(t * 0.5 + 1) * 0.008;
             }
             if (bones.rightLowerArm) {
-                bones.rightLowerArm.rotation.y = -0.1 + Math.sin(t * 0.55 + 2) * 0.008;
+                bones.rightLowerArm.rotation.y = -0.15 + Math.sin(t * 0.55 + 2) * 0.008;
             }
             // Gentle head movement — slight look around, tilt
             if (bones.head) {
