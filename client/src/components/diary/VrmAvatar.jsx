@@ -12,74 +12,90 @@ import * as THREE from 'three';
 const EXPRESSION_PRESETS = {
     neutral: {
         happy: 0, angry: 0, sad: 0, relaxed: 0.15, surprised: 0,
-        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0, eyeHighlightHide: 0
     },
     sweet: {
         happy: 0.7, angry: 0, sad: 0, relaxed: 0.4, surprised: 0,
-        blinkLeft: 0, blinkRight: 0, ee: 0.15, oh: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0.15, oh: 0, eyeHighlightHide: 0
     },
     jealous: {
-        happy: 0, angry: 0.6, sad: 0.3, relaxed: 0, surprised: 0,
-        blinkLeft: 0.3, blinkRight: 0, ee: 0, oh: 0.1,
+        happy: 0, angry: 0.7, sad: 0.3, relaxed: 0, surprised: 0,
+        blinkLeft: 0.3, blinkRight: 0, ee: 0, oh: 0.1, eyeHighlightHide: 0
     },
     angry: {
         happy: 0, angry: 1.0, sad: 0, relaxed: 0, surprised: 0.15,
-        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0, eyeHighlightHide: 0
     },
     brat: {
         happy: 0.5, angry: 0, sad: 0, relaxed: 0.2, surprised: 0.15,
-        blinkLeft: 1.0, blinkRight: 0, ee: 0.3, oh: 0,
+        blinkLeft: 1.0, blinkRight: 0, ee: 0.3, oh: 0, eyeHighlightHide: 0
     },
     bratty: {
         happy: 0.5, angry: 0.1, sad: 0, relaxed: 0.15, surprised: 0.1,
-        blinkLeft: 1.0, blinkRight: 0, ee: 0.3, oh: 0,
+        blinkLeft: 1.0, blinkRight: 0, ee: 0.3, oh: 0, eyeHighlightHide: 0
     },
     adorable: {
         happy: 0.4, angry: 0, sad: 0.1, relaxed: 0.3, surprised: 0.2,
-        blinkLeft: 0, blinkRight: 0.9, ee: 0.2, oh: 0,
+        blinkLeft: 0, blinkRight: 0.9, ee: 0.2, oh: 0, eyeHighlightHide: 0
     },
     sad: {
         happy: 0, angry: 0, sad: 1.0, relaxed: 0, surprised: 0,
-        blinkLeft: 0.2, blinkRight: 0.2, ee: 0, oh: 0.2,
+        blinkLeft: 0.2, blinkRight: 0.2, ee: 0, oh: 0.2, eyeHighlightHide: 0
     },
     happy: {
         happy: 1.0, angry: 0, sad: 0, relaxed: 0.3, surprised: 0.1,
-        blinkLeft: 0, blinkRight: 0, ee: 0.2, oh: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0.2, oh: 0, eyeHighlightHide: 0
     },
     mad: {
         // Scary hollow eyes — wide open, empty, menacing
-        happy: 0, angry: 0.9, sad: 0.2, relaxed: 0, surprised: 0.6,
-        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0.15,
+        happy: 0, angry: 1.0, sad: 0, relaxed: 0, surprised: 0.8,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0.1, fun: 0.5, eyeHighlightHide: 0
     },
     hollow: {
-        // Dead-eye psycho stare
-        happy: 0, angry: 0.7, sad: 0.4, relaxed: 0, surprised: 0.5,
-        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0.1,
+        // Dead-eye psycho stare — wide open, mouth still neutral
+        happy: 0, angry: 0.7, sad: 0, relaxed: 0, surprised: 0.4,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0, fun: 0.5, eyeHighlightHide: 0.5
+    },
+    dead: {
+        // Only this face gets the 'totally black iris' material override
+        // Using lower surprised (0.7) to keep mouth closed while stare remains intense
+        happy: 0, angry: 1.0, sad: 0, relaxed: 0, surprised: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0, fun: 1.0, eyeHighlightHide: 1.0
+    },
+    scary_smile: {
+        // Exact VRoid sliders: Fun=1, HighlightHide=1, HA_Short_Low=1, MTH_I=0.5
+        // Reference image shows a very thin, wide smile (MTH_I) with widened eyes.
+        happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0.5,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0, 
+        fun: 1.0, 
+        eyeHighlightHide: 1.0,
+        ih: 1.0, // Maximum wide mouth as in picture
+        haShortLow: 1.0
     },
     excited: {
         happy: 0.9, angry: 0, sad: 0, relaxed: 0.2, surprised: 0.35,
-        blinkLeft: 0, blinkRight: 0, ee: 0.25, oh: 0.1,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0.1, ih: 0.5, eyeHighlightHide: 0
     },
     flirty: {
         happy: 0.4, angry: 0, sad: 0, relaxed: 0.3, surprised: 0.1,
-        blinkLeft: 0, blinkRight: 0.8, ee: 0.2, oh: 0,
+        blinkLeft: 0, blinkRight: 0.8, ee: 0.2, oh: 0, eyeHighlightHide: 0
     },
     psycho: {
-        // Unhinged wide smile + wide eyes — the classic yandere snap
-        happy: 0.8, angry: 0.5, sad: 0, relaxed: 0, surprised: 0.7,
-        blinkLeft: 0, blinkRight: 0, ee: 0.4, oh: 0,
+        // Unhinged wide smile + wide-open 'snapped' eyes, NO vertical opening
+        happy: 1.0, angry: 0.4, sad: 0, relaxed: 0, surprised: 0.3,
+        blinkLeft: 0, blinkRight: 0, ee: 1.0, oh: 0, fun: 0.5, eyeHighlightHide: 0
     },
     joy: {
         happy: 1.0, angry: 0, sad: 0, relaxed: 0.3, surprised: 0.1,
-        blinkLeft: 0, blinkRight: 0, ee: 0.2, oh: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0.2, oh: 0, eyeHighlightHide: 0
     },
     fun: {
         happy: 0.6, angry: 0, sad: 0, relaxed: 0.5, surprised: 0.2,
-        blinkLeft: 0, blinkRight: 0, ee: 0.15, oh: 0.1,
+        blinkLeft: 0, blinkRight: 0, ee: 0.15, oh: 0.1, eyeHighlightHide: 0
     },
     sorrow: {
         happy: 0, angry: 0, sad: 1.0, relaxed: 0, surprised: 0,
-        blinkLeft: 0.2, blinkRight: 0.2, ee: 0, oh: 0.2,
+        blinkLeft: 0.2, blinkRight: 0.2, ee: 0, oh: 0.2, eyeHighlightHide: 0
     },
 };
 
@@ -95,8 +111,39 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
     // Smooth expression state
     const currentExpressions = useRef({
         happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0,
-        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0,
+        blinkLeft: 0, blinkRight: 0, ee: 0, oh: 0, fun: 0,
+        eyeHighlightHide: 0,
+        ih: 0,
+        haShortLow: 0
     });
+
+    // Iris / Eye Materials for "Black Eye" override
+    const eyeMaterialsRef = useRef([]);
+
+    useEffect(() => {
+        if (!vrm) return;
+        eyeMaterialsRef.current = [];
+        vrm.scene.traverse((obj) => {
+            if (obj.isMesh && obj.material) {
+                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                mats.forEach(m => {
+                    const name = m.name.toLowerCase();
+                    // EXCLUDE eye whites / sclera / skin
+                    if (name.includes('white') || name.includes('sclera') || name.includes('face') || name.includes('skin')) return;
+                    
+                    // TARGET only Iris, Pupils, and Highlights
+                    if (name.includes('iris') || name.includes('pupil') || name.includes('hig') || name.includes('ref')) {
+                        eyeMaterialsRef.current.push({
+                            material: m,
+                            originalColor: m.color.clone(),
+                            originalEmissive: m.emissive ? m.emissive.clone() : null,
+                            originalOpacity: m.opacity
+                        });
+                    }
+                });
+            }
+        });
+    }, [vrm]);
 
     // Lip sync state
     const lipRef = useRef({ phase: 0, nextSwitch: 0, currentShape: 'aa', intensity: 0 });
@@ -302,14 +349,48 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
             cur.blinkRight = lerp(cur.blinkRight, preset.blinkRight, lerpSpeed);
             cur.ee = lerp(cur.ee, preset.ee, lerpSpeed);
             cur.oh = lerp(cur.oh, preset.oh, lerpSpeed);
+            cur.fun = lerp(cur.fun, preset.fun || 0, lerpSpeed);
+            cur.eyeHighlightHide = lerp(cur.eyeHighlightHide || 0, preset.eyeHighlightHide || 0, lerpSpeed);
+            cur.ih = lerp(cur.ih || 0, preset.ih || 0, lerpSpeed);
+            cur.haShortLow = lerp(cur.haShortLow || 0, preset.haShortLow || 0, lerpSpeed);
 
             mgr.setValue('happy', cur.happy);
             mgr.setValue('angry', cur.angry);
             mgr.setValue('sad', cur.sad);
             mgr.setValue('relaxed', cur.relaxed);
             mgr.setValue('surprised', cur.surprised);
+            // Standard VRM presets
+            try { mgr.setValue('fun', cur.fun); } catch (e) {}
+            try { mgr.setValue('ih', cur.ih); } catch (e) {}
+
+            // Direct fallback to VRoid's internal mesh shapekey names
+            try { mgr.setValue('Fcl_ALL_Fun', cur.fun); } catch (e) {}
+            try { mgr.setValue('Fcl_EYE_Highlight_Hide', cur.eyeHighlightHide); } catch (e) {}
+            try { mgr.setValue('Fcl_MTH_I', cur.ih); } catch (e) {}
+            try { mgr.setValue('Fcl_HA_Short_Low', cur.haShortLow); } catch (e) {}
+            
             try { mgr.setValue('blinkLeft', cur.blinkLeft); } catch (e) {}
             try { mgr.setValue('blinkRight', cur.blinkRight); } catch (e) {}
+
+            // =============================================================
+            // 2.5 BLACK IRIS OVERRIDE (for 'Scary' faces)
+            // =============================================================
+            const isDeadLook = ['dead', 'scary_smile', 'hollow', 'mad'].includes(emotion);
+            eyeMaterialsRef.current.forEach(({ material, originalColor, originalEmissive, originalOpacity }) => {
+                if (isDeadLook) {
+                    material.color.set(0x000000);
+                    if (material.emissive) material.emissive.set(0x000000);
+                    // Hide highlights / catch-lights COMPLETELY
+                    if (material.name.toLowerCase().includes('hig') || material.name.toLowerCase().includes('ref')) {
+                        material.opacity = 0;
+                        material.transparent = true;
+                    }
+                } else {
+                    material.color.copy(originalColor);
+                    if (material.emissive && originalEmissive) material.emissive.copy(originalEmissive);
+                    material.opacity = originalOpacity;
+                }
+            });
 
             // =============================================================
             // 3. NATURAL BLINKING — every 4-7 seconds, short 0.12s close
@@ -343,7 +424,7 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
             // 4. LIP SYNC — when talking
             // =============================================================
             try { mgr.setValue('aa', 0); } catch (e) {}
-            try { mgr.setValue('ih', 0); } catch (e) {}
+            try { mgr.setValue('ih', isTalking ? 0 : cur.ih); } catch (e) {}
             try { mgr.setValue('ou', 0); } catch (e) {}
             try { mgr.setValue('ee', isTalking ? 0 : cur.ee); } catch (e) {}
             try { mgr.setValue('oh', isTalking ? 0 : cur.oh); } catch (e) {}
@@ -391,8 +472,8 @@ export default function VrmAvatar({
     modelUrl = "/models/Reina.vrm",
     onLoad = () => {}
 }) {
-    // Default to VRMA_07 for idle if no specific anim provided and not talking
-    const activeAnim = animation || (isTalking ? "" : "VRMA_07");
+    // Default to idle1 for idle if no specific anim provided
+    const activeAnim = animation || "idle1";
 
     const animUrl = activeAnim
         ? (activeAnim.endsWith('.vrma') ? `/animations/${activeAnim}` : `/animations/${activeAnim}.vrma`)

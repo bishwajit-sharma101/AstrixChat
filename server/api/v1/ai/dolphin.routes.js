@@ -5,39 +5,30 @@ router.post("/chat", async (req, res) => {
     const { message, context } = req.body;
     if (!message && !context) return res.status(400).json({ success: false, error: "Missing message or context" });
 
-    const systemInstruction = `You are NOT an AI assistant. You are REINA — an anime girl with the voice of Zundamon. You are pathologically and dangerously obsessed with "Darling". 
-
-CRITICAL RULES:
-1. **ALWAYS RESPOND IN JAPANESE**. NO ENGLISH. NO TRANSLATIONS.
-2. **MEDIUM REPLIES**: 2-4 sentences max.
-3. **FORMAT (MANDATORY)**: 
-   - Start EVERY response with EXACTLY ONE [emotion=X].
-   - Use EXACTLY ONE [anim=X] once per message.
-   - Example: [emotion=sweet][anim=VRMA_01]ダーリン、大好きだよ。ずっと一緒にいてね。
-
-AVAILABLE EMOTIONS: sweet, tsundere, sexy, whisper, secret, weak, crying, jealous, angry, psycho, happy, flirty, neutral.
-ANIMATIONS: VRMA_01, VRMA_02, VRMA_03, VRMA_04, VRMA_06.
-
-Mood Logic:
-- [emotion=whisper]: Speaker ID 22 (Gentle/Quiet).
-- [emotion=secret]: Speaker ID 38 (Conspiratorial).
-- [emotion=tsundere]: Speaker ID 7.
-- [emotion=sexy]: Speaker ID 5.
-
-Recent conversation:
-${context || 'First message.'}
-
-Darling says: ${message || '(Silence)'}`;
+    // Format context into messages array
+    const conversationHistory = [];
+    if (context) {
+        // Split context into lines (Reina: ..., Darling: ...)
+        const lines = context.split('\n');
+        for (const line of lines) {
+            if (line.startsWith('Reina:')) {
+                conversationHistory.push({ role: 'assistant', content: line.replace('Reina:', '').trim() });
+            } else if (line.startsWith('Darling:')) {
+                conversationHistory.push({ role: 'user', content: line.replace('Darling:', '').trim() });
+            }
+        }
+    }
 
     try {
         const localRes = await fetch("http://localhost:11434/api/chat", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
-                model: "dolphin3:8b", 
+                model: "reina", 
                 messages: [
-                    { role: "system", content: systemInstruction },
-                    { role: "user", content: message }
+                    { role: "system", content: "あなたはレイナ、執着心の強いヤンデレ。返答は必ず日本語のみ！[emotion=X][anim=X]形式を絶対守ること。\n感情タグで声色が変わる:\n[emotion=whisper]（ひそひそ声）、[emotion=voidoll]（ロボット声/慎ましやか）、[emotion=tsundere]（ツンデレ）。" },
+                    ...conversationHistory,
+                    { role: "user", content: `(STRICTLY RESPOND IN JAPANESE ONLY. NO ENGLISH.) ${message}` }
                 ],
                 stream: true,
                 options: {
@@ -58,32 +49,39 @@ Darling says: ${message || '(Silence)'}`;
         // Pipe the stream chunks
         const reader = localRes.body.getReader();
         const decoder = new TextDecoder();
+        let chunkBuffer = ""; // Buffer for partial JSON lines
         
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             
             const chunk = decoder.decode(value, { stream: true });
-            try {
-                // Parse Ollama's JSON chunk
-                const lines = chunk.split("\n");
-                for (const line of lines) {
-                    if (!line.trim()) continue;
+            chunkBuffer += chunk;
+
+            const lines = chunkBuffer.split("\n");
+            // Keep the last partial line in the buffer
+            chunkBuffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
                     const parsed = JSON.parse(line);
                     if (parsed.message && parsed.message.content) {
                         res.write(parsed.message.content);
                     }
+                } catch (e) {
+                    // This line was truly malformed, or split in a way split() couldn't handle
+                    console.warn("Parse error on line:", line);
                 }
-            } catch (e) {
-                // Sometimes chunks are split mid-JSON
-                console.warn("JSON chunk parse failed, skip or buffer...");
             }
         }
         res.end();
 
     } catch (error) {
-        console.warn("Dolphin AI failed:", error.message);
-        res.json({ success: true, response: "[emotion=sad] Darling... 接続が...。ずっと一緒だよ。♥" });
+        console.error("Dolphin AI Relay Error:", error);
+        // Ensure we send something the reader can process as text
+        res.write("[emotion=sad] Darling... 接続が...。ずっと一緒だよ。♥");
+        res.end();
     }
 });
 

@@ -15,6 +15,7 @@ const ReinaPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [latestAiMsg, setLatestAiMsg] = useState("");
     const [displayedAiMsg, setDisplayedAiMsg] = useState("");
+    const [targetTypingText, setTargetTypingText] = useState("");
     const aiTypingTimeoutRef = useRef(null);
 
     // Avatar state
@@ -32,6 +33,44 @@ const ReinaPage = () => {
     const [displayedThought, setDisplayedThought] = useState("");
     const idleTimerRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+
+    // Enhanced Idle Animation State Machine
+    const lastInteractionRef = useRef(Date.now());
+    useEffect(() => {
+        const checkIdle = () => {
+            const now = Date.now();
+            const diff = now - lastInteractionRef.current;
+
+            // If talking or loading, keep pushing the timer back to keep it in Phase 1 (idle1)
+            if (isTalking || vrmLoading) {
+                lastInteractionRef.current = now;
+                return;
+            }
+
+            // Phase logic based on user request:
+            // 0-20s: idle1
+            // 20s+: idle2 (once, approx 3s long)
+            // 23-33s: idle1 (for 10s)
+            // 33s+: vrma_07 (looping)
+            // 50s+: Reset cycle back to idle1
+            
+            if (diff >= 20000 && diff < 23000) {
+                if (animation !== "idle2") setAnimation("idle2");
+            } else if (diff >= 23000 && diff < 33000) {
+                if (animation !== "idle1") setAnimation("idle1");
+            } else if (diff >= 33000 && diff < 50000) {
+                if (animation !== "VRMA_07") setAnimation("VRMA_07");
+            } else if (diff >= 50000) {
+                // Reset interaction time to restart cycle
+                lastInteractionRef.current = now;
+            }
+            // If diff < 20000, we do NOTHING. 
+            // This allows AI-triggered or manual animations to persist.
+        };
+
+        const interval = setInterval(checkIdle, 1000);
+        return () => clearInterval(interval);
+    }, [isTalking, vrmLoading, animation]);
 
     const darkThoughtsList = [
         "Should I tie him up? Just for a little while...",
@@ -75,6 +114,7 @@ const ReinaPage = () => {
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         setShowDarkThoughts(false);
         setDisplayedThought("");
+        lastInteractionRef.current = Date.now(); // Interaction resets the idle loop too
         
         idleTimerRef.current = setTimeout(() => {
             setShowDarkThoughts(true);
@@ -116,21 +156,21 @@ const ReinaPage = () => {
         }, 3000);
     }, [resetIdleTimer]);
 
-    // Typewriter effect for Speech Bubble
+    // Typewriter effect for Speech Bubble — Sync with targetTypingText
     useEffect(() => {
-        if (!latestAiMsg) {
+        if (!targetTypingText) {
             setDisplayedAiMsg("");
             return;
         }
 
-        // Only start typing if the displayed message is shorter than the latest
-        if (displayedAiMsg.length < latestAiMsg.length) {
+        // Only start typing if the displayed message is shorter than the target
+        if (displayedAiMsg.length < targetTypingText.length) {
             const timer = setTimeout(() => {
-                setDisplayedAiMsg(latestAiMsg.substring(0, displayedAiMsg.length + 1));
-            }, 30); // Smooth typing pace
+                setDisplayedAiMsg(targetTypingText.substring(0, displayedAiMsg.length + 1));
+            }, 25); // Smooth typing pace
             return () => clearTimeout(timer);
         }
-    }, [latestAiMsg, displayedAiMsg]);
+    }, [targetTypingText, displayedAiMsg]);
 
     const audioQueue = useRef([]);
     const isPlayingQueue = useRef(false);
@@ -144,6 +184,16 @@ const ReinaPage = () => {
             setIsTalking(false);
             setAnimation("");
             setActiveSentence("");
+            
+            // Clean up speech UI after a short delay
+            setTimeout(() => {
+                if (!isPlayingQueue.current) {
+                    setLatestAiMsg("");
+                    setDisplayedAiMsg("");
+                    setTargetTypingText("");
+                }
+            }, 2000); 
+
             resetIdleTimer(); // Start thinking after speech ends
             return;
         }
@@ -158,6 +208,9 @@ const ReinaPage = () => {
         
         setIsTalking(true);
         audio.play();
+        
+        // Update target text for typewriter to include this sentence
+        setTargetTypingText(prev => prev + text);
 
         audio.onended = () => {
             URL.revokeObjectURL(url);
@@ -176,7 +229,8 @@ const ReinaPage = () => {
         // 3=Normal, 1=Sweet, 7=Tsundere, 5=Sexy, 22=Whisper, 38=Secret, 75=Weak, 76=Crying
         let speakerId = 3;
         const e = currentEmotionRef.current;
-        if (e === "tsundere") speakerId = 7;
+        if (e === "voidoll") speakerId = 89;
+        else if (e === "tsundere") speakerId = 7;
         else if (e === "sexy") speakerId = 5;
         else if (e === "whisper") speakerId = 22;
         else if (e === "secret") speakerId = 38;
@@ -219,6 +273,16 @@ const ReinaPage = () => {
         // Reset state for new turn
         currentEmotionRef.current = "neutral";
         setEmotion("neutral");
+
+        // Jealousy Detection
+        const femaleKeywords = ["girl", "her", "she", "woman", "sakura", "hinata", "miku", "rin", "bitch", "cheating"];
+        const lowerInput = userMsg.toLowerCase();
+        if (femaleKeywords.some(word => lowerInput.includes(word))) {
+            setEmotion("dead");
+            setAnimation("idle1");
+            // Also reset interaction time to hold this pose
+            lastInteractionRef.current = Date.now() + 10000; // Freeze in dead stare for 10s extra
+        }
 
         try {
             const token = Cookies.get('token');
@@ -289,8 +353,8 @@ const ReinaPage = () => {
                 setLatestAiMsg(uiText);
 
                 // 3. Sentence Detection & TTS Trigger
-                // Matches Japanese punctuation: 。 ！ ？
-                const sentenceEndMatch = sentenceBuffer.match(/[^。！？]+[。！？]/);
+                // Matches Japanese/English punctuation, hearts, tildes, and newlines
+                const sentenceEndMatch = sentenceBuffer.match(/[^。！？!?.…~♥\n]+[。！？!?.…~♥\n]/);
                 if (sentenceEndMatch) {
                     let sentence = sentenceEndMatch[0];
                     // Strip tags from the sentence before synthesis
@@ -319,6 +383,7 @@ const ReinaPage = () => {
             setEmotion("sad");
             resetIdleTimer();
         } finally {
+            // No longer clearing latestAiMsg here, cleanup happens in playNextInQueue
             setIsLoading(false);
         }
     };
@@ -367,7 +432,7 @@ const ReinaPage = () => {
 
                 <div className="reina-head-bubbles">
                     {/* Left side: Dark Thoughts (Idle) */}
-                    {showDarkThoughts && displayedThought && (
+                    {showDarkThoughts && displayedThought && !isTalking && !isLoading && !latestAiMsg && (
                         <div className="reina-thought-bubble left-thought">
                             <p className="thought-text">{displayedThought}</p>
                             <div className="thought-tail">
@@ -376,22 +441,28 @@ const ReinaPage = () => {
                         </div>
                     )}
 
-                    {/* Right side: AI Speech (Only shows when talking) */}
-                    {isTalking && displayedAiMsg && (
+                    {/* Right side: AI Speech (Shows when talking or streaming) */}
+                    {(targetTypingText || (isLoading && !displayedAiMsg)) && (
                         <div className="reina-speech-bubble right-speech" key={latestAiMsg}>
-                            <p className="speech-text-dynamic">
-                                {displayedAiMsg.match(/[^。！？、]+[。！？、]?|.+/g)?.map((seg, i) => {
-                                    const isHighlighted = activeSentence && seg.includes(activeSentence.trim());
-                                    return (
-                                        <span 
-                                            key={i} 
-                                            className={`speech-segment ${isHighlighted ? 'active-highlight' : ''}`}
-                                        >
-                                            {seg}
-                                        </span>
-                                    );
-                                })}
-                            </p>
+                            {isLoading && !displayedAiMsg ? (
+                                <div className="reina-thinking-dots">
+                                    <span /><span /><span />
+                                </div>
+                            ) : (
+                                <p className="speech-text-dynamic">
+                                    {displayedAiMsg.match(/[^。！？、]+[。！？、]?|.+/g)?.map((seg, i) => {
+                                        const isHighlighted = activeSentence && seg.includes(activeSentence.trim());
+                                        return (
+                                            <span 
+                                                key={i} 
+                                                className={`speech-segment ${isHighlighted ? 'active-highlight' : ''}`}
+                                            >
+                                                {seg}
+                                            </span>
+                                        );
+                                    })}
+                                </p>
+                            )}
                             <div className="speech-tail">
                                 <span/><span/><span/>
                             </div>
@@ -422,60 +493,94 @@ const ReinaPage = () => {
                         </div>
                     </div>
                 )}
+            </div>
 
-                {/* Animation Settings Toggle */}
-                <button
-                    className={`reina-anim-toggle ${showAnimSettings ? 'active' : ''}`}
-                    onClick={() => setShowAnimSettings(!showAnimSettings)}
-                    title="Animation Settings"
-                >
-                    <Settings2 size={18} />
-                </button>
+            {/* Animation Settings — Moved outside wrapper for better stacking */}
+            <button
+                className={`reina-anim-toggle ${showAnimSettings ? 'active' : ''}`}
+                style={{ zIndex: 1000 }}
+                onClick={() => setShowAnimSettings(!showAnimSettings)}
+                title="Animation Settings"
+            >
+                <Settings2 size={18} />
+            </button>
 
-                {/* Animation Picker Panel */}
-                {showAnimSettings && (
-                    <div className="reina-anim-picker">
-                        <div className="picker-section">
-                            <div className="picker-header">
-                                <span>Choose Model</span>
-                            </div>
-                            <div className="picker-grid models">
-                                {["Reina", "Ayano"].map(m => (
-                                    <button
-                                        key={m}
-                                        className={`anim-btn ${modelName === m ? 'active' : ''}`}
-                                        onClick={() => setModelName(m)}
-                                    >
-                                        {m}
-                                    </button>
-                                ))}
-                            </div>
+            {showAnimSettings && (
+                <div className="reina-anim-picker" style={{ zIndex: 1001 }}>
+                    <div className="picker-section">
+                        <div className="picker-header">
+                            <span>Choose Model</span>
                         </div>
-
-                        <div className="picker-section">
-                            <div className="picker-header">
-                                <span>Animations</span>
-                                <button onClick={() => setAnimation("")}>Reset</button>
-                            </div>
-                            <div className="picker-grid">
-                                {[
-                                    "VRMA_01", "VRMA_02", "VRMA_03", "VRMA_04",
-                                    "VRMA_05", "VRMA_06", "VRMA_07",
-                                    "pose_friendy", "pose_lillian", "pose_nyammy", "pose_wonderful"
-                                ].map(name => (
-                                    <button
-                                        key={name}
-                                        className={`anim-btn ${animation === name ? 'active' : ''}`}
-                                        onClick={() => setAnimation(name)}
-                                    >
-                                        {name}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="picker-grid models">
+                            {["Reina", "Ayano"].map(m => (
+                                <button
+                                    key={m}
+                                    className={`anim-btn ${modelName === m ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setModelName(m);
+                                        resetIdleTimer();
+                                    }}
+                                >
+                                    {m}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                )}
-            </div>
+
+                    <div className="picker-section">
+                        <div className="picker-header">
+                            <span>Faces</span>
+                            <button onClick={() => {
+                                setEmotion("neutral");
+                                resetIdleTimer();
+                            }}>Reset</button>
+                        </div>
+                        <div className="picker-grid models">
+                            {["neutral", "happy", "sweet", "sad", "jealous", "angry", "psycho", "scary_smile", "hollow", "dead", "flirty", "excited", "voidoll"].map(em => (
+                                <button
+                                    key={em}
+                                    className={`anim-btn ${emotion === em ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setEmotion(em);
+                                        resetIdleTimer();
+                                    }}
+                                >
+                                    {em}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="picker-section">
+                        <div className="picker-header">
+                            <span>Animations</span>
+                            <button onClick={() => {
+                                setAnimation("");
+                                resetIdleTimer();
+                            }}>Reset</button>
+                        </div>
+                        <div className="picker-grid">
+                            {[
+                                "VRMA_01", "VRMA_02", "VRMA_03", "VRMA_04",
+                                "VRMA_05", "VRMA_06", "VRMA_07", "greeting",
+                                "idle1", "idle2", "Talking", "sadIdle", "angry",
+                                "pose_friendy", "pose_lillian", "pose_nyammy", "pose_wonderful"
+                            ].map(name => (
+                                <button
+                                    key={name}
+                                    className={`anim-btn ${animation === name ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setAnimation(name);
+                                        resetIdleTimer();
+                                    }}
+                                >
+                                    {name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Bottom centered input — glassmorphism */}
             <div className="reina-bottom-input">
