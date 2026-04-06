@@ -62,8 +62,10 @@ const coachRoutes = require("./coach.routes");
 const karmaRoutes = require("./karma.routes");
 const dolphinRoutes = require("./dolphin.routes");
 const voicevoxRoutes = require("./voicevox.routes");
+const ashTranslatorRoutes = require("./ashTranslator.routes");
 
 // Apply middleware
+router.use("/translate_text/ash", protect, limiter, ashTranslatorRoutes);
 router.use("/translate_text", protect, limiter, geminiRoutes);
 router.use("/translate_text", protect, limiter, localRoutes);
 router.use("/analyze-chat", protect, limiter, coachRoutes);

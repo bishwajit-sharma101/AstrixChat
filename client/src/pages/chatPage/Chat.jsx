@@ -72,12 +72,15 @@ export default function Chat() {
     if (isFetchingUsers) return; 
     setIsFetchingUsers(true);
     try {
-       const url = searchTerm
+        if (!token) return; // Prevent 401 if token is missing
+        
+        const url = searchTerm
   ? `http://localhost:5000/api/v1/users?search=${searchTerm}&page=${page}&limit=20`
   : `http://localhost:5000/api/v1/users?page=${page}&limit=20`;
 
 
         const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         
         if (data.success) {
@@ -104,11 +107,22 @@ export default function Chat() {
   useEffect(() => {
     const socket = getSocket();
     socketRef.current = socket;
-    if (socket && currentUser) socket.emit("register-user", currentUser._id || currentUser.id);
+    if (socket && currentUser) {
+        socket.emit("register-user", currentUser._id || currentUser.id);
+    }
+    
     const onlineHandler = (list) => setOnlineUsers(list);
-    socket.on("online-users", onlineHandler);
-    return () => socket.off("online-users", onlineHandler);
-  }, []); 
+    
+    if (socket) {
+        socket.on("online-users", onlineHandler);
+    }
+
+    return () => {
+        if (socket) {
+            socket.off("online-users", onlineHandler);
+        }
+    };
+  }, [currentUser]); 
 
   const handleLoadMoreUsers = () => {
     if (hasMoreUsers && !isFetchingUsers && !searchTerm) {
@@ -313,19 +327,21 @@ export default function Chat() {
         return [user, ...prev.filter(u => u._id !== activeChat.id)];
     });
 
-    socket.emit("private-message", {
-      toUserId: activeChat.id, 
-      fromUserId: currentUserId,
-      message: textPayload, // ⚡ Sending text payload to satisfy Mongoose
-      targetLang: targetLang, 
-      
-      originalAudioBase64: fileType === 'audio' ? fileBase64 : null,
-      attachmentBase64: (!fileType || fileType !== 'audio') ? fileBase64 : null,
-      attachmentType: fileType,
-      mimeType: mimeType, 
-      
-      metadata: { tempId }, 
-    });
+    if (socket) {
+      socket.emit("private-message", {
+        toUserId: activeChat.id, 
+        fromUserId: currentUserId,
+        message: textPayload, // ⚡ Sending text payload to satisfy Mongoose
+        targetLang: targetLang, 
+        
+        originalAudioBase64: fileType === 'audio' ? fileBase64 : null,
+        attachmentBase64: (!fileType || fileType !== 'audio') ? fileBase64 : null,
+        attachmentType: fileType,
+        mimeType: mimeType, 
+        
+        metadata: { tempId }, 
+      });
+    }
   };
 
   useEffect(() => {

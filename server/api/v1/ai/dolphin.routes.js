@@ -19,6 +19,25 @@ router.post("/chat", async (req, res) => {
         }
     }
 
+    // 1. Set headers IMMEDIATELY to prevent proxy/browser timeouts
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("X-No-Compression", "1"); 
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // 2. Disable Timeouts
+    req.setTimeout(0);
+    res.setTimeout(0);
+    req.socket.setKeepAlive(true);
+    res.flushHeaders(); 
+
+    // 3. Start Heartbeat IMMEDIATELY (32 spaces to bypass buffers)
+    let hasData = false;
+    let heartbeatInterval = setInterval(() => {
+        if (!hasData) res.write("                                "); 
+    }, 1000);
+
     try {
         const localRes = await fetch("http://localhost:11434/api/chat", {
             method: "POST",
@@ -26,61 +45,71 @@ router.post("/chat", async (req, res) => {
             body: JSON.stringify({
                 model: "reina", 
                 messages: [
-                    { role: "system", content: "あなたはレイナ、執着心の強いヤンデレ。返答は必ず日本語のみ！[emotion=X][anim=X]形式を絶対守ること。\n感情タグで声色が変わる:\n[emotion=whisper]（ひそひそ声）、[emotion=voidoll]（ロボット声/慎ましやか）、[emotion=tsundere]（ツンデレ）。" },
                     ...conversationHistory,
-                    { role: "user", content: `(STRICTLY RESPOND IN JAPANESE ONLY. NO ENGLISH.) ${message}` }
+                    { role: "user", content: message } 
                 ],
                 stream: true,
                 options: {
-                    num_predict: 300,
-                    stop: ["Darling:", "Reina:"]
+                    num_predict: 350, 
+                    temperature: 0.7,
+                    repeat_penalty: 1.2
                 }
             })
         });
         
         if (!localRes.ok) throw new Error("Ollama failed.");
 
-        // Set headers for streaming
-        res.setHeader("Content-Type", "text/plain; charset=utf-8");
-        res.setHeader("Transfer-Encoding", "chunked");
-        res.setHeader("X-No-Compression", "1"); // Trigger for my app.js filter
-        res.setHeader("Cache-Control", "no-cache");
-
-        // Pipe the stream chunks
         const reader = localRes.body.getReader();
         const decoder = new TextDecoder();
-        let chunkBuffer = ""; // Buffer for partial JSON lines
+        let chunkBuffer = ""; 
         
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             
+            // Kill heartbeat as soon as real content starts pouring in
+            if (!hasData) {
+                clearInterval(heartbeatInterval);
+                hasData = true;
+            }
+
             const chunk = decoder.decode(value, { stream: true });
             chunkBuffer += chunk;
 
             const lines = chunkBuffer.split("\n");
-            // Keep the last partial line in the buffer
             chunkBuffer = lines.pop();
 
             for (const line of lines) {
                 if (!line.trim()) continue;
                 try {
                     const parsed = JSON.parse(line);
-                    if (parsed.message && parsed.message.content) {
-                        res.write(parsed.message.content);
+                    
+                    // Support BOTH standard content and Reasoning blocks (DeepSeek-R1)
+                    if (parsed.message) {
+                        if (parsed.message.reasoning_content) {
+                            // Relay thinking process wrapped in tags for the frontend
+                            const thinking = parsed.message.reasoning_content;
+                            res.write(`<think>${thinking}</think>`);
+                        }
+                        
+                        if (parsed.message.content) {
+                            const content = parsed.message.content;
+                            // RAW LOGGING - See exactly what Ollama is thinking
+                            process.stdout.write(content); 
+                            res.write(content);
+                        }
                     }
                 } catch (e) {
-                    // This line was truly malformed, or split in a way split() couldn't handle
-                    console.warn("Parse error on line:", line);
+                    console.warn("Parse error:", line);
                 }
             }
         }
         res.end();
 
     } catch (error) {
+        clearInterval(heartbeatInterval);
         console.error("Dolphin AI Relay Error:", error);
-        // Ensure we send something the reader can process as text
-        res.write("[emotion=sad] Darling... 接続が...。ずっと一緒だよ。♥");
+        res.write("[emotion=sad][anim=sadIdle] Darling... 接続が...。ずっと一緒だよ。♥");
         res.end();
     }
 });

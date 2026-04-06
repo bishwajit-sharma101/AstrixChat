@@ -80,6 +80,10 @@ const EXPRESSION_PRESETS = {
         happy: 0.4, angry: 0, sad: 0, relaxed: 0.3, surprised: 0.1,
         blinkLeft: 0, blinkRight: 0.8, ee: 0.2, oh: 0, eyeHighlightHide: 0
     },
+    scary_smile2: {
+        happy: 0.4, angry: 0, sad: 0, relaxed: 0.3, surprised: 0.1,
+        blinkLeft: 0, blinkRight: 0.8, ee: 0.2, oh: 0, eyeHighlightHide: 0
+    },
     psycho: {
         // Unhinged wide smile + wide-open 'snapped' eyes, NO vertical opening
         happy: 1.0, angry: 0.4, sad: 0, relaxed: 0, surprised: 0.3,
@@ -375,7 +379,7 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
             // =============================================================
             // 2.5 BLACK IRIS OVERRIDE (for 'Scary' faces)
             // =============================================================
-            const isDeadLook = ['dead', 'scary_smile', 'hollow', 'mad'].includes(emotion);
+            const isDeadLook = ['dead', 'scary_smile', 'scary_smile2', 'hollow', 'mad'].includes(emotion);
             eyeMaterialsRef.current.forEach(({ material, originalColor, originalEmissive, originalOpacity }) => {
                 if (isDeadLook) {
                     material.color.set(0x000000);

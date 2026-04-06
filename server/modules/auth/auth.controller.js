@@ -27,7 +27,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // COOKIE #1 — JWT Token (Hardened)
     res.cookie('token', token, {
-        httpOnly: true, // ⚡ FIX: Protect token from XSS
+        httpOnly: false, // ⚡ Allow frontend to read token for socket connection
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 * 7, 
         sameSite: "lax"
@@ -67,7 +67,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // COOKIE #1 — JWT Token (Hardened)
     res.cookie('token', token, {
-        httpOnly: true, // ⚡ FIX: Protect token from XSS
+        httpOnly: false, // ⚡ Allow frontend to read token for socket connection
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 * 7, 
         sameSite: "lax"
@@ -128,7 +128,7 @@ const googleAuth = asyncHandler(async (req, res) => {
 
     // 3. Set Cookies (Matching your existing login logic)
     res.cookie('token', systemToken, {
-        httpOnly: true, // ⚡ FIX: Protect token from XSS
+        httpOnly: false, // ⚡ Allow frontend to read token for socket connection
         secure: process.env.NODE_ENV === 'production',
         maxAge: 1000 * 60 * 60 * 24 * 7,
         sameSite: "lax"

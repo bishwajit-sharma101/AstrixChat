@@ -11,8 +11,8 @@ const ai = new GoogleGenAI({
 });
 
 router.post("/", async (req, res) => {
-  // 2. ADD 'messageId' to the destructured body
-  const { text, target_lang, messageId } = req.body;
+  // 2. Extract context from body
+  const { text, target_lang, messageId, context } = req.body;
 
   if (!text || !target_lang) {
     return res.status(400).json({
@@ -22,27 +22,39 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    const startTime = Date.now();
+    
+    // --- Format Context for Prompt ---
+    const historyText = context && context.length > 0 
+      ? context.map(c => `[${c.role}]: "${c.text}"`).join("\n")
+      : "No prior conversation history.";
+
+    console.log(`[Gemini Translator] 🚀 Calling gemini-2.5-flash with Context (${context?.length || 0} msgs)...`);
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // Corrected model name if needed
+      model: "gemini-2.5-flash",
       systemInstruction: TRANSLATION_SYSTEM_PROMPT,
       contents: [
         { 
           role: "user",
-          parts: [{ text: `Translate this: "${text}" to ${target_lang}` }],
+          parts: [{ text: `target_lang=${target_lang}\n\nConversation Context:\n${historyText}\n\nMessage to transform: "${text}"` }],
         },
       ],
       generationConfig: {
-        temperature: 0.2,
-        topP: 0.9,
-        maxOutputTokens: 1024,
+        temperature: 0.1,
+        topP: 0.95,
+        maxOutputTokens: 2048,
       },
     });
 
-    const translatedText = response.text?.trim();
+    const translatedText = response.text.trim();
 
     if (!translatedText) {
       throw new Error("Empty Gemini response");
     }
+
+    const endTime = Date.now();
+    console.log(`[Gemini Translator] ✅ SUCCESS in ${endTime - startTime}ms`);
 
     // 3. ADD THIS: Save the translation to MongoDB Map
     if (messageId) {
@@ -66,16 +78,17 @@ router.post("/", async (req, res) => {
   } catch (err) {
     console.warn("❌ Gemini SDK error, switching to local model...", err.message);
     try {
-        const localRes = await fetch("http://127.0.0.1:7861/translate_text", {
+        const localRes = await fetch("http://localhost:11434/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                text: text,
-                target_lang: target_lang
+                model: "ash-translate", // Or "dolphin3" depending on user's models
+                prompt: `Translate this: "${text}" to ${target_lang}. Output ONLY the translated text.`,
+                stream: false
             })
         });
         const localData = await localRes.json();
-        const translatedText = localData.translation || localData.translation_text;
+        const translatedText = localData.response?.trim();
         
         if (messageId && translatedText) {
             await Message.findByIdAndUpdate(

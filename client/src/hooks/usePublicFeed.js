@@ -119,6 +119,10 @@ export const usePublicFeed = () => {
     setIsLoading(true);
     try {
       const token = Cookies.get('token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
       const res = await axios.get('http://localhost:5000/api/v1/posts', {
         headers: { Authorization: `Bearer ${token}` }
       });
