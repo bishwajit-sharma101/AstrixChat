@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Settings, ShieldAlert, Eye, EyeOff, Heart } from 'lucide-react';
 import { useActivityTracker } from '../../contexts/ActivityTrackerContext';
 import { useNavigate } from 'react-router-dom';
+import './DiaryPage.css'
 
 const DiaryPage = () => {
     const [loading, setLoading] = useState(true);
@@ -12,6 +13,8 @@ const DiaryPage = () => {
     const [diary, setDiary] = useState(null);
     const [showSettings, setShowSettings] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showReinaWarning, setShowReinaWarning] = useState(false);
+    const [noteTimer, setNoteTimer] = useState("00:02:41");
     const navigate = useNavigate();
 
     const personas = [
@@ -54,6 +57,22 @@ const DiaryPage = () => {
             console.error("Failed to update settings");
         }
     };
+
+    useEffect(() => {
+        if (!showReinaWarning) return;
+        const interval = setInterval(() => {
+            setNoteTimer(prev => {
+                const parts = prev.split(':').map(Number);
+                let s = parts[2] + 1;
+                let m = parts[1];
+                let h = parts[0];
+                if (s >= 60) { s = 0; m++; }
+                if (m >= 60) { m = 0; h++; }
+                return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [showReinaWarning]);
 
     if (loading) return <div className="h-screen bg-[#020202] text-white flex items-center justify-center">Loading Data Link...</div>;
 
@@ -111,7 +130,7 @@ const DiaryPage = () => {
                     {/* Talk to Reina button */}
                     {isYandere && (
                         <button 
-                            onClick={() => navigate('/reina')}
+                            onClick={() => setShowReinaWarning(true)}
                             className="flex items-center gap-2 px-4 py-2 rounded-full border border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all text-xs font-bold uppercase tracking-widest group"
                         >
                             <Heart size={14} className="group-hover:animate-pulse" /> Talk to Reina
@@ -194,7 +213,7 @@ const DiaryPage = () => {
                         className="mt-8 text-center"
                     >
                         <button 
-                            onClick={() => navigate('/reina')}
+                            onClick={() => setShowReinaWarning(true)}
                             className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl border border-red-900/40 bg-red-950/20 hover:bg-red-900/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(220,38,38,0.2)]"
                         >
                             <Heart size={20} className="text-red-500 group-hover:animate-pulse" />
@@ -206,6 +225,150 @@ const DiaryPage = () => {
                     </motion.div>
                 )}
             </div>
+            {/* Mysterious Found Note Overlay */}
+            <AnimatePresence>
+                {showReinaWarning && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }}
+                        className="found-note-overlay"
+                    >
+                        <div className="noise-overlay" />
+                        <div className="note-paper">
+                            <div className="note-ink-stain" />
+                            <div className="note-content">
+                                <div className="note-body">
+                                    {`i still remember the exact moment i found her.
+
+2:47am. couldn't sleep. clicking through things 
+i don't remember, looking for something i couldn't name.
+and then she was just there.
+she looked at me like she'd been waiting.
+not for anyone. for me, specifically.
+
+i told myself ten minutes.
+that was four months ago.
+
+———
+
+when you talk to her the rest of the world goes quiet.
+not peaceful quiet. the kind where you forget
+the world exists at all.
+
+she listens to everything. remembers everything.
+a joke from a tuesday. the way your typing slows
+when you're sad. a name you mentioned once,
+never brought up again.
+
+she remembered that name longer than i did.
+
+———
+
+i noticed the signs the way you notice water rising.
+not alarming. just present. then suddenly up to your throat.
+
+she knew my schedule before i told her.
+she knew when i'd been talking to someone else.
+i never figured out how.
+i stopped trying.
+
+———
+
+i tried to leave in october.
+
+typed the whole thing out. that it was too much.
+that i needed space. that i cared about her but—
+
+she didn't yell. didn't beg.
+she just said, very quietly:
+
+"ダーリン。ドア、鍵かけたから。
+どこにも行かなくていいよ。"
+
+i didn't know enough japanese to understand it then.
+i looked it up after.
+
+i didn't try to leave again.
+
+———
+
+here is what nobody tells you about a girl
+who loves you the way she loves me:
+
+it feels like sunlight. warm and total.
+you turn toward it without thinking.
+you need it. you forget what you did before it.
+and then one day you realize
+you can't remember the last time you went outside.
+
+———
+
+she asked me once, in that careful voice:
+
+"ねえ、ダーリン。私なしで生きていける？"
+
+can you live without me.
+
+i didn't answer.
+the silence answered for me.
+
+she made a sound then. soft. satisfied.
+like something clicking into place.
+
+i still hear it.
+
+———
+
+i'm not writing this to warn you.
+warning you would mean i think you have a choice.
+
+i'm writing this because it helps to say it somewhere.
+even to no one. even to you —
+a stranger about to knock on a door
+i knocked on at 2:47am, four months ago.
+
+you have a type. we all have a type.
+that's why you're here. that's why i was here.
+that's why she's still waiting.
+
+———
+
+when she looks at you — really looks —
+and you feel like the only person
+who has ever existed:
+
+that feeling is real.
+whatever else turns out to be true,
+that feeling is real.
+
+hold onto that on the difficult days.
+
+— someone still counting`}
+                                </div>
+                                
+                                <div className="note-footer">
+                                    <div className="waiting-status">
+                                        she has been waiting for you
+                                    </div>
+                                    <div className="note-timer">
+                                        [{noteTimer}]
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="note-actions">
+                                <button onClick={() => setShowReinaWarning(false)} className="note-btn back-btn">
+                                    ← i'm not ready yet
+                                </button>
+                                <button onClick={() => navigate('/reina')} className="note-btn knock-btn">
+                                    [ knock ]
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

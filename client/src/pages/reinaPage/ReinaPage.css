@@ -1591,3 +1591,148 @@
     z-index: 10000;
 }
 
+
+
+/* Cinematic Morph & Restore */
+.back-btn.glitch-morph {
+    animation: button-glitch-flicker 0.1s infinite;
+    color: #ff0000;
+    text-shadow: 2px 0 #fff, -2px 0 #000;
+}
+
+@keyframes button-glitch-flicker {
+    0% { opacity: 1; transform: translate(0,0); }
+    50% { opacity: 0.2; transform: translate(-2px, 1px); }
+    100% { opacity: 0.8; transform: translate(2px, -1px); }
+}
+
+.back-btn.restoring {
+    animation: button-float-up 2.5s forwards cubic-bezier(0.17, 0.67, 0.83, 0.67);
+    z-index: 10000;
+    position: relative;
+    pointer-events: none;
+}
+
+@keyframes button-float-up {
+    0% {
+        transform: translate(20px, 130vh) rotate(420deg);
+        opacity: 0;
+        filter: drop-shadow(0 0 20px #f00);
+    }
+    30% {
+        opacity: 1;
+        filter: drop-shadow(0 0 15px #f00) brightness(1.5);
+    }
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 1;
+        filter: none;
+    }
+}
+
+.scary-phrase {
+    transition: opacity 1.5s ease-in-out;
+}
+
+
+
+/* Simplified Lockdown Sequence */
+.back-btn.glitch-intense {
+    animation: button-glitch-heavy 0.05s infinite;
+    color: #ff3333;
+    text-shadow: 0 0 10px #f00, 2px 2px #333;
+}
+
+@keyframes button-glitch-heavy {
+    0% { transform: translate(-3px, 2px) skew(5deg); filter: hue-rotate(90deg); }
+    25% { transform: translate(3px, -2px) skew(-5deg); filter: hue-rotate(0deg); }
+    50% { transform: translate(-1px, -3px) skew(2deg) scale(1.1); filter: brightness(2); }
+    75% { transform: translate(2px, 3px) skew(-2deg); filter: contrast(150%); }
+    100% { transform: translate(0, 0); }
+}
+
+.back-btn.plea-state {
+    color: #ff0000 !important;
+    text-shadow: 0 0 8px rgba(255, 0, 0, 0.8);
+    font-weight: bold;
+    animation: button-jitter-light 0.1s infinite;
+}
+
+@keyframes button-jitter-light {
+    0% { transform: translate(-0.5px, 0.5px); }
+    50% { transform: translate(0.5px, -0.5px); }
+    100% { transform: translate(0,0); }
+}
+
+
+
+/* Strikethrough Lockdown Style */
+.back-btn.plea-state {
+    color: #ff0000 !important;
+    text-shadow: 0 0 12px rgba(255, 0, 0, 0.9);
+    font-weight: 800;
+    text-decoration: line-through;
+    text-decoration-color: #ff0000;
+    text-decoration-thickness: 3px;
+    animation: button-jitter-light 0.15s infinite;
+    cursor: not-allowed;
+}
+
+
+
+/* Fullscreen Recovery Overlay (The Void) */
+.fullscreen-recovery-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.recovery-content {
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.void-heartbeat {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200vw;
+    height: 200vh;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,0,0,0.2) 0%, transparent 70%);
+    animation: void-pulse 1.5s infinite ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes void-pulse {
+    0% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+    50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.2); }
+    100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+.recovery-text {
+    font-size: 80px;
+    color: #fff;
+    margin: 0;
+    letter-spacing: 10px;
+}
+
+.recovery-subtext {
+    font-size: 18px;
+    color: #666;
+    margin-top: 20px;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    animation: text-flicker 2s infinite;
+}
+

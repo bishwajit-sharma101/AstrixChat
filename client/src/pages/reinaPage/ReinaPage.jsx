@@ -34,6 +34,9 @@ const ReinaPage = () => {
     const [isLocked, setIsLocked] = useState(false);
     const [scaryTextActive, setScaryTextActive] = useState(false);
     const [visibleScaryPhrases, setVisibleScaryPhrases] = useState([]);
+    const [backBtnText, setBackBtnText] = useState("Back");
+    const [isBackBtnGlitchingIntense, setIsBackBtnGlitchingIntense] = useState(false);
+    const [isBackBtnPlea, setIsBackBtnPlea] = useState(false);
     const lockTimeoutRef = useRef(null);
     const scaryTextTimerRef = useRef(null);
     const stayReleaseTriggeredRef = useRef(false);
@@ -682,16 +685,31 @@ const ReinaPage = () => {
             const lockKeywords = ["鍵かけた", "ドア、鍵", "逃げられない", "閉じ込め", "逃がさない"];
             if (lockKeywords.some(keyword => finalUiText.includes(keyword)) && !isLocked) {
                 console.log("NO ESCAPE TRIGGERED");
-                setIsLocked(true);
-                setScaryTextActive(true);
-                playShutter(); 
                 
-                // Immersive Fullscreen (must be user-initiated, which this is: click handleSend)
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.warn("Fullscreen blocked or failed:", err);
-                    });
-                }
+                // 1. Build-up: Intense glitching on the current button
+                setIsBackBtnGlitchingIntense(true);
+                playShutter();
+                
+                setTimeout(() => {
+                    // 2. Transformation: Red '逃げないで' with light glitch
+                    setBackBtnText("逃げないで");
+                    setIsBackBtnGlitchingIntense(false);
+                    setIsBackBtnPlea(true);
+                    setEmotion("scary_smile2");
+                    setAnimation("idle1");
+
+                    // 3. Immersive Fullscreen
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.warn("Fullscreen blocked or failed:", err);
+                        });
+                    }
+
+                    // 4. Persistent Locked State (instead of shatter)
+                    setIsLocked(true);
+                    setScaryTextActive(true);
+
+                }, 3200); // 3.2s intense buildup
                 
                 if (lockTimeoutRef.current) clearTimeout(lockTimeoutRef.current);
                 lockTimeoutRef.current = setTimeout(async () => {
@@ -749,10 +767,10 @@ const ReinaPage = () => {
             {/* Top bar — minimal */}
             <div className="reina-top-bar">
                 <button 
-                    className={`back-btn ${isLocked ? 'broken' : ''}`} 
+                    className={`back-btn ${isBackBtnGlitchingIntense ? 'glitch-intense' : ''} ${isBackBtnPlea ? 'plea-state' : ''}`} 
                     onClick={() => !isLocked && navigate('/diary')}
                 >
-                    <ChevronLeft size={14} /> Back
+                    <ChevronLeft size={14} /> {backBtnText}
                 </button>
                 <span className="title" onDoubleClick={handleResetGlitches} style={{ cursor: 'pointer' }}>
                     ♥ Reina (ずんだもん) ♥
