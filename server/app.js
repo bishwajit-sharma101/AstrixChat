@@ -25,6 +25,12 @@ if (missingEnv.length > 0) {
 const app = express();
 debug('Express app initialized.');
 
+// 1. Serve Uploads Statically (For Media Attachments)
+const uploadDir = path.join(__dirname, 'uploads');
+const fs = require('fs');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+app.use('/uploads', express.static(uploadDir));
+
 connectDB();
 
 // 1. HELMET (Allow Google Popups)
@@ -81,6 +87,28 @@ app.use(compression({
   }
 }));
 
+// ⚡ DIAGNOSTIC METRICS (Temporary for Stress Test)
+const { performance, PerformanceObserver } = require("perf_hooks");
+let lastEventLoopLag = 0;
+const obs = new PerformanceObserver((list) => {
+  const entry = list.getEntries()[0];
+  lastEventLoopLag = entry.duration;
+});
+obs.observe({ entryTypes: ["node"], buffered: false });
+
+app.get("/api/v1/metrics", (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    eventLoopLagMs: lastEventLoopLag,
+    memoryMb: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+    },
+    cpuUsage: process.cpuUsage()
+  });
+});
+
 // --- ROUTES ---
 app.get("/speed", (req, res) => res.json({ success: true }));
 app.get('/', (req, res) => {
@@ -89,27 +117,12 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1', v1Router);
 
-// ⚡ MEDIA CLEANUP
-const fs = require('fs');
-const os = require('os');
-setInterval(() => {
-    const TMP_DIR = path.join(os.tmpdir(), "astrix_audio");
-    if (fs.existsSync(TMP_DIR)) {
-        fs.readdir(TMP_DIR, (err, files) => {
-            if (err) return;
-            const now = Date.now();
-            for (const file of files) {
-                const filePath = path.join(TMP_DIR, file);
-                fs.stat(filePath, (err, stats) => {
-                    if (err) return;
-                    if (now - stats.mtimeMs > 300000) { 
-                        fs.unlink(filePath, () => {});
-                    }
-                });
-            }
-        });
-    }
-}, 600000);
+// ⚡ Mount BullMQ Dashboard
+const { serverAdapter } = require("./api/v1/ai/aiQueue");
+app.use('/api/v1/queue/dashboard', serverAdapter.getRouter());
+
+// ⚡ BACKGROUND DAEMONS (Backups & Cleanups)
+require('./cron/tasks');
 
 app.use(notFoundHandler);
 app.use(errorHandler);

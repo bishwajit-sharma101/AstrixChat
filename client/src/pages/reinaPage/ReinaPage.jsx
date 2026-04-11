@@ -37,6 +37,9 @@ const ReinaPage = () => {
     const [backBtnText, setBackBtnText] = useState("Back");
     const [isBackBtnGlitchingIntense, setIsBackBtnGlitchingIntense] = useState(false);
     const [isBackBtnPlea, setIsBackBtnPlea] = useState(false);
+    const [selectedTts, setSelectedTts] = useState("voicevox");
+    const [selectedModel, setSelectedModel] = useState("reina");
+    const [voiceTag, setVoiceTag] = useState("sweet");
     const lockTimeoutRef = useRef(null);
     const scaryTextTimerRef = useRef(null);
     const stayReleaseTriggeredRef = useRef(false);
@@ -68,7 +71,12 @@ const ReinaPage = () => {
     const heartbeatIntervalRef = useRef(null);
 
     const initAudio = () => {
-        if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume();
+        }
     };
 
     const playHeartbeat = (volume = 0.8) => {
@@ -422,99 +430,188 @@ const ReinaPage = () => {
     const audioQueue = useRef([]);
     const isPlayingQueue = useRef(false);
     const activeAudio = useRef(null);
+    const analyserRef = useRef(null);
+    const [peak, setPeak] = useState(0); 
     const currentEmotionRef = useRef("neutral");
+
+    // Real-time Analyser logic
+    const startAnalyser = (audioElement) => {
+        if (!audioCtxRef.current) initAudio();
+        const ctx = audioCtxRef.current;
+        
+        // Use a persistent Source node if possible, or create fresh
+        const source = ctx.createMediaElementSource(audioElement);
+        if (!analyserRef.current) {
+            analyserRef.current = ctx.createAnalyser();
+            analyserRef.current.fftSize = 64;
+        }
+        
+        source.connect(analyserRef.current);
+        analyserRef.current.connect(ctx.destination); // 🏁 KEY: Connect to speakers!
+
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        const update = () => {
+            if (!analyserRef.current || audioElement.paused) {
+                setPeak(0);
+                return;
+            }
+            analyserRef.current.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+            const avg = sum / dataArray.length;
+            setPeak(avg / 128); // Normalize 0-1
+            requestAnimationFrame(update);
+        };
+        update();
+    };
 
     // Helper: Play next audio in queue
     const playNextInQueue = useCallback(() => {
+        if (isPlayingQueue.current) return; 
+
         if (audioQueue.current.length === 0) {
             isPlayingQueue.current = false;
             setIsTalking(false);
             setAnimation("");
             setActiveSentence("");
             
-            // Clean up speech UI after a short delay
             setTimeout(() => {
-                if (!isPlayingQueue.current) {
+                if (!isPlayingQueue.current && audioQueue.current.length === 0 && !isLoading) {
                     setLatestAiMsg("");
                     setDisplayedAiMsg("");
                     setTargetTypingText("");
                 }
             }, 2000); 
 
-            resetIdleTimer(); // Start thinking after speech ends
+            resetIdleTimer();
+            return;
+        }
+
+        const nextItem = audioQueue.current[0];
+        if (!nextItem.url) {
+            console.log("[Reina Voice] ⏳ Next segment still synthesizing, waiting...");
+            return; 
+        }
+
+        if (nextItem.url === "ERROR") {
+            audioQueue.current.shift();
+            playNextInQueue();
             return;
         }
 
         isPlayingQueue.current = true;
-        const nextItem = audioQueue.current.shift();
-        const { url, text } = nextItem;
+        const task = audioQueue.current.shift();
+        const { url, text } = task;
         
+        console.log(`[Reina Voice] 🔊 STARTING: "${text}"`);
+
         const audio = new Audio(url);
+        audio.crossOrigin = "anonymous";
+        audio.volume = 1.0;
+        audio.muted = false;
         activeAudio.current = audio;
-        setActiveSentence(text);
-        
-        setIsTalking(true);
-        audio.play();
-        
-        // Update target text for typewriter to include this sentence
+
+        // ⚡ FIX: Connect to Analyser and Speakers
+        audio.oncanplaythrough = () => {
+            startAnalyser(audio);
+        };
+
+        // ⚡ SYNC FIX: Only show 'Speaking' and highlight text when sound ACTUALLY starts
+        audio.onplaying = () => {
+            setIsTalking(true);
+            setActiveSentence(text);
+        };
+
+        // Update target text for typewriter
         setTargetTypingText(prev => prev + text);
 
         audio.onended = () => {
-            URL.revokeObjectURL(url);
+            console.log(`[Reina Voice] ✅ ENDED: "${text}"`);
+            if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+            isPlayingQueue.current = false; 
             
-            // Check if this was the last part of a 'Stay' release
             if (stayReleaseTriggeredRef.current && audioQueue.current.length === 0) {
                 handleResetGlitches();
                 stayReleaseTriggeredRef.current = false;
-                if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(() => {});
-                }
+                if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
             }
-            
             playNextInQueue();
         };
-        audio.onerror = () => {
-            playNextInQueue();
-        };
-    }, []);
 
-    // Helper: Synthesize and Add to Queue
+        audio.onerror = (e) => {
+            console.error(`[Reina Voice] ❌ Audio Error: "${text}"`, e);
+            if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+            isPlayingQueue.current = false;
+            playNextInQueue();
+        };
+
+        audio.play().catch(e => {
+            console.error("[Reina Voice] ⚠️ Play Blocked (Autoplay?):", e.message);
+            isPlayingQueue.current = false;
+            playNextInQueue();
+        });
+    }, [resetIdleTimer, isLoading]);
+
+    // Queen3 TTS Voice Map 
+    const voiceMap = {
+        sweet: "A high-pitched, youthful English female voice. Soft, breathy, and overly affectionate.",
+        whisper: "A very quiet, low, breathy English voice. Sounds like a dangerous secret.",
+        psycho: "A high-pitched English female voice. Unstable, breaking into frantic giggles or sharp shrieks.",
+        cold: "A flat, monotone, and chillingly calm English female voice. Purely robotic and detached.",
+        angry: "A sharp, aggressive, and high-volume English female voice. Full of jealousy and rage."
+    };
+
+    // Helper: Synthesize and Add to Queue (WITH PLACEHOLDERS FOR ORDER)
     const synthesizeAndQueue = async (text, token) => {
         if (!text.trim()) return;
         
-        // Precise Zundamon Speaker IDs:
-        // 3=Normal, 1=Sweet, 7=Tsundere, 5=Sexy, 22=Whisper, 38=Secret, 75=Weak, 76=Crying
-        let speakerId = 3;
-        const e = currentEmotionRef.current;
-        if (e === "voidoll") speakerId = 89;
-        else if (e === "tsundere") speakerId = 7;
-        else if (e === "sexy") speakerId = 5;
-        else if (e === "whisper") speakerId = 22;
-        else if (e === "secret") speakerId = 38;
-        else if (e === "weak") speakerId = 75;
-        else if (e === "crying") speakerId = 76;
-        else if (e === "sweet" || e === "adorable" || e === "flirty" || e === "happy") speakerId = 1;
+        const task = { text, url: null };
+        audioQueue.current.push(task);
 
-        try {
-            const ttsRes = await fetch("http://localhost:5000/api/v1/ai/voicevox/tts", {
-                method: "POST",
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ text, speakerId })
-            });
+        if (selectedTts === "voicevox") {
+            try {
+                let speakerId = 3;
+                const e = currentEmotionRef.current;
+                if (e === "voidoll") speakerId = 89;
+                else if (e === "tsundere") speakerId = 7;
+                else if (e === "sexy") speakerId = 5;
+                else if (e === "whisper") speakerId = 22;
+                else if (e === "secret") speakerId = 38;
+                else if (e === "weak") speakerId = 75;
+                else if (e === "crying") speakerId = 76;
+                else if (e === "sweet" || e === "adorable" || e === "flirty" || e === "happy") speakerId = 1;
 
-            if (ttsRes.ok) {
-                const blob = await ttsRes.blob();
-                const url = URL.createObjectURL(blob);
-                audioQueue.current.push({ url, text });
-                if (!isPlayingQueue.current) {
+                const ttsRes = await fetch("http://localhost:5000/api/v1/ai/voicevox/tts", {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ text, speakerId })
+                });
+
+                if (ttsRes.ok) {
+                    const blob = await ttsRes.blob();
+                    task.url = URL.createObjectURL(blob);
+                    playNextInQueue();
+                } else {
+                    task.url = "ERROR";
                     playNextInQueue();
                 }
+            } catch (err) {
+                console.error("Voicevox Error:", err);
+                task.url = "ERROR";
+                playNextInQueue();
             }
-        } catch (err) {
-            console.error("TTS Queue Error:", err);
+        } else {
+            // Queen3 Uses Natural GET Streaming
+            const v = voiceMap[voiceTag] || voiceMap.sweet;
+            const streamUrl = `http://localhost:5000/api/v1/ai/queen3/stream-tts?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(v)}`;
+            
+            // Set the URL immediately! No need to fetch/await.
+            task.url = streamUrl;
+            console.log(`[Reina Voice] Assigned Stream URL for: "${text.substring(0, 20)}..."`);
+            playNextInQueue();
         }
     };
 
@@ -549,13 +646,17 @@ const ReinaPage = () => {
                 `${m.sender === 'user' ? 'Darling' : 'Reina'}: ${m.text}`
             ).join('\n');
 
-            const response = await fetch('http://localhost:5000/api/v1/ai/dolphin/chat', {
+            const apiEndpoint = selectedModel === "reina-gemini" 
+                ? 'http://localhost:5000/api/v1/ai/reina-gemini/chat'
+                : 'http://localhost:5000/api/v1/ai/dolphin/chat';
+
+            const response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ message: userMsg, context: context })
+                body: JSON.stringify({ model: selectedModel, message: userMsg, context: context })
             });
 
             if (!response.ok) throw new Error("Stream failed");
@@ -566,7 +667,8 @@ const ReinaPage = () => {
             let fullText = "";
             let sentenceBuffer = "";
             let hasParsedEmotion = false;
-            let hasParsedAnim = false; // Prevents animation flickering
+            let hasParsedAnim = false;
+            let hasParsedVoice = false;
 
 
             // Updated Parser: Handle streaming tags and sentences
@@ -610,8 +712,17 @@ const ReinaPage = () => {
                     if (animMatch) {
                         const a = animMatch[1].trim();
                         setAnimation(a);
-                        lastInteractionRef.current = Date.now(); // ⚡ RESET IDLE TIMER for AI anim
+                        lastInteractionRef.current = Date.now();
                         hasParsedAnim = true;
+                    }
+                }
+
+                if (!hasParsedVoice) {
+                    const voiceMatch = fullText.match(/\[voice=([^\]]+)\]/);
+                    if (voiceMatch) {
+                        const v = voiceMatch[1].trim().toLowerCase();
+                        setVoiceTag(v);
+                        hasParsedVoice = true;
                     }
                 }
 
@@ -621,6 +732,7 @@ const ReinaPage = () => {
                     .replace(/<(thought|think)>[\s\S]*/gi, '') // Hide partial thinking block
                     .replace(/\[emotion=[^\]]+\]/g, '')
                     .replace(/\[anim=[^\]]+\]/g, '')
+                    .replace(/\[voice=[^\]]+\]/g, '')
                     .replace(/\[[A-Z_]+\]/g, '') 
                     .replace(/\(Translation:[^)]+\)/gi, '') 
                     .replace(/\([^)]*translation[^)]*\)/gi, '') 
@@ -643,18 +755,13 @@ const ReinaPage = () => {
                 console.log("AI Reply (Streaming Buffer):", uiText || "(thinking...)");
 
                 // 3. Sentence Detection & TTS Trigger
-                // Matches Japanese/English punctuation, hearts, tildes, and newlines
                 const sentenceEndMatch = sentenceBuffer.match(/[^。！？!?.…~♥\n]+[。！？!?.…~♥\n]/);
                 if (sentenceEndMatch) {
                     let sentence = sentenceEndMatch[0];
-                    // Strip tags from the sentence before synthesis
                     let cleanSentence = sentence.replace(/\[[^\]]+\]/g, '').trim();
-                    
                     if (cleanSentence) {
                         synthesizeAndQueue(cleanSentence, token);
                     }
-                    
-                    // Remove the processed sentence from buffer
                     sentenceBuffer = sentenceBuffer.substring(sentenceEndMatch.index + sentence.length);
                 }
             }
@@ -669,6 +776,7 @@ const ReinaPage = () => {
                 .replace(/<(thought|think)>[\s\S]*/gi, '')
                 .replace(/\[emotion=[^\]]+\]/g, '')
                 .replace(/\[anim=[^\]]+\]/g, '')
+                .replace(/\[voice=[^\]]+\]/g, '')
                 .replace(/\[[A-Z_]+\]/g, '') 
                 .replace(/\(Translation:[^)]+\)/gi, '') 
                 .replace(/\([^)]*translation[^)]*\)/gi, '') 
@@ -817,7 +925,9 @@ const ReinaPage = () => {
                 {isTalking && (
                     <div className="reina-speaking-badge">
                         <div className="speaking-bars">
-                            <span /><span /><span />
+                            <span style={{ height: `${10 + peak * 90}%` }} />
+                            <span style={{ height: `${20 + peak * 80}%` }} />
+                            <span style={{ height: `${10 + peak * 90}%` }} />
                         </div>
                         <span className="speaking-label">Speaking</span>
                     </div>
@@ -867,6 +977,7 @@ const ReinaPage = () => {
                     emotion={emotion}
                     animation={animation}
                     isTalking={isTalking}
+                    peak={peak} 
                     modelUrl={`/models/${modelName}.vrm`}
                     onLoad={handleVrmLoaded}
                 />
@@ -900,6 +1011,40 @@ const ReinaPage = () => {
                                     }}
                                 >
                                     {m}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="picker-section">
+                        <div className="picker-header">
+                            <span>Brain Model</span>
+                        </div>
+                        <div className="picker-grid models">
+                            {["reina", "reina-gemini", "reinaT", "reinaTD", "reinaJ", "reinaE", "gemma4:e4b", "dolphin3:8b"].map(m => (
+                                <button
+                                    key={m}
+                                    className={`anim-btn ${selectedModel === m ? 'active' : ''}`}
+                                    onClick={() => setSelectedModel(m)}
+                                >
+                                    {m === "reina-gemini" ? "REINA (Gemini)" : m}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="picker-section">
+                        <div className="picker-header">
+                            <span>TTS Engine</span>
+                        </div>
+                        <div className="picker-grid models">
+                            {["voicevox", "queen3"].map(t => (
+                                <button
+                                    key={t}
+                                    className={`anim-btn ${selectedTts === t ? 'active' : ''}`}
+                                    onClick={() => setSelectedTts(t)}
+                                >
+                                    {t === "voicevox" ? "Voicevox (JP)" : "Queen3 (EN)"}
                                 </button>
                             ))}
                         </div>

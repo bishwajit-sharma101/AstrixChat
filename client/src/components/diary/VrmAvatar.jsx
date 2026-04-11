@@ -105,7 +105,7 @@ const EXPRESSION_PRESETS = {
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 
-function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
+function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, peak = 0, onLoad }) {
     const [vrm, setVrm] = useState(null);
     const mixerRef = useRef(null);
     const currentActionRef = useRef(null);
@@ -444,7 +444,7 @@ function VrmModel({ vrmUrl, animationUrl, emotion, isTalking, onLoad }) {
                     lip.intensity = 0.3 + Math.random() * 0.7;
                 }
 
-                const envelope = Math.max(0, Math.sin(lip.phase * 8) * 0.5 + 0.5);
+                const envelope = (0.2 + peak * 0.8) * (Math.sin(lip.phase * 8) * 0.5 + 0.5);
                 const finalVal = lip.intensity * envelope;
 
                 try { mgr.setValue(lip.currentShape, Math.min(finalVal, 1.0)); } catch (e) {
@@ -473,6 +473,7 @@ export default function VrmAvatar({
     emotion = "neutral",
     animation = "",
     isTalking = false,
+    peak = 0,
     modelUrl = "/models/Reina.vrm",
     onLoad = () => {}
 }) {
@@ -500,6 +501,7 @@ export default function VrmAvatar({
                     animationUrl={animUrl}
                     emotion={emotion}
                     isTalking={isTalking}
+                    peak={peak}
                     onLoad={onLoad}
                 />
 

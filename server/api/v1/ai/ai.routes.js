@@ -62,6 +62,8 @@ const coachRoutes = require("./coach.routes");
 const karmaRoutes = require("./karma.routes");
 const dolphinRoutes = require("./dolphin.routes");
 const voicevoxRoutes = require("./voicevox.routes");
+const queen3Routes = require("./queen3.routes");
+const reinaGeminiRoutes = require("./reina-gemini.routes");
 const ashTranslatorRoutes = require("./ashTranslator.routes");
 
 // Apply middleware
@@ -72,5 +74,8 @@ router.use("/analyze-chat", protect, limiter, coachRoutes);
 router.use("/karma", protect, limiter, karmaRoutes);
 router.use("/dolphin", protect, limiter, dolphinRoutes);
 router.use("/voicevox", protect, limiter, voicevoxRoutes);
+router.use("/queen3", queen3Routes);
+router.use("/reina-gemini", reinaGeminiRoutes);
+router.use("/ash", ashTranslatorRoutes);
 
 module.exports = router;

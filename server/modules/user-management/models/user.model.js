@@ -51,8 +51,8 @@ const userSchema = new mongoose.Schema({
         default: true,
     },
     contacts: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        lastMessageAt: { type: Date, default: Date.now }
     }],
     preferredLanguage: {
         type: String,

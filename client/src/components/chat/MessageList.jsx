@@ -103,7 +103,9 @@ export default function MessageList({ messages = [], currentUser = null, targetL
   const endRef = useRef(null);
   const [localMessages, setLocalMessages] = useState([]);
   const processedIds = useRef(new Set());
-  const sessionStartTime = useRef(Date.now());
+  const autoTranslateBlockedIds = useRef(new Set()); 
+  const lastSwitchTime = useRef(Date.now());
+  const prevLangRef = useRef(targetLang);
   const [contextMenu, setContextMenu] = useState(null);
 
   // --- HELPER: Save Translation ---
@@ -134,8 +136,20 @@ export default function MessageList({ messages = [], currentUser = null, targetL
 
   // --- SMART MERGE LOGIC ---
   useEffect(() => {
-    if (targetLang !== "none") {
-      sessionStartTime.current = Date.now() - 5000;
+    // ⚡ FIX: Strict Gating for Old Messages
+    // When language changes, we block all current messages from auto-translating.
+    // They can still be manually translated, but won't trigger AI automatically.
+    if (targetLang !== prevLangRef.current) {
+        // Collect all current IDs to block
+        const currentIds = messages.map(m => m._id || m.id);
+        autoTranslateBlockedIds.current = new Set(currentIds);
+        
+        lastSwitchTime.current = Date.now(); 
+        prevLangRef.current = targetLang;
+    } else if (autoTranslateBlockedIds.current.size === 0 && messages.length > 0) {
+        // Initial load lock: Block existing history on first mount
+        const currentIds = messages.map(m => m._id || m.id);
+        autoTranslateBlockedIds.current = new Set(currentIds);
     }
 
     setLocalMessages((prev) => {
@@ -192,12 +206,21 @@ export default function MessageList({ messages = [], currentUser = null, targetL
   const triggerTranslation = async (m, index, isManual = false) => {
     if (!targetLang || targetLang === "none") return;
     
-    // Time-gate auto-translation
-    const msgTime = new Date(m.createdAt || Date.now()).getTime();
-    if (!isManual && msgTime < sessionStartTime.current) return;
+    const mId = m._id || m.id;
 
-    const sessionKey = `${m._id || m.id}-${targetLang}`;
-    if (!isManual && m._translatedLang === targetLang && (m.textTranslated || m._translatingText)) return;
+    // ⚡ FIX: Strict Auto-Translation Gate
+    // We ONLY auto-translate if the message is "fresh" (arrived in the last 15 seconds).
+    // This prevents history syncs or old messages from triggering AI.
+    if (!m.createdAt) return; // Do not auto-translate if timestamp is missing
+    
+    const msgTime = new Date(m.createdAt).getTime();
+    const now = Date.now();
+    
+    // Safety check: 15 second window
+    if (!isManual && (isNaN(msgTime) || msgTime < now - 15000)) return;
+
+    const sessionKey = `${mId}-${targetLang}`;
+    if (!isManual && (m._translatedLang === targetLang) && (m.textTranslated || m._translatingText)) return;
     if (!isManual && processedIds.current.has(sessionKey)) return;
 
     const originalText = m.content?.original || m.textOriginal;

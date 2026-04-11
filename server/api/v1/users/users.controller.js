@@ -20,11 +20,30 @@ const getAllUsers = asyncHandler(async (req, res) => {
     };
   }
 
-  const users = await User.find({ ...keyword, _id: { $ne: req.user._id } })
+  // Fetch current user's contacts for sorting priority
+  const me = await User.findById(req.user._id).select("contacts");
+  const contactMap = new Map();
+  if (me && me.contacts) {
+      me.contacts.forEach(c => contactMap.set(c.user.toString(), c.lastMessageAt));
+  }
+
+  const usersRaw = await User.find({ ...keyword, _id: { $ne: req.user._id } })
     .select("name email avatar isOnline lastSeen") 
-    .skip(skip)
-    .limit(limit)
-    .sort({ createdAt: -1 });
+    .lean();
+
+  // Custom sort: Contacts with recent messages FIRST
+  const sortedUsers = usersRaw.sort((a, b) => {
+    const timeA = contactMap.get(a._id.toString()) || 0;
+    const timeB = contactMap.get(b._id.toString()) || 0;
+
+    if (timeA || timeB) {
+        return new Date(timeB).getTime() - new Date(timeA).getTime();
+    }
+    // Fallback to creation date for others
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  const users = sortedUsers.slice(skip, skip + limit);
 
   const count = await User.countDocuments({ ...keyword, _id: { $ne: req.user._id } });
 
@@ -80,12 +99,13 @@ const deleteAccount = asyncHandler(async (req, res) => {
 
 // NEW: Update Profile
 const updateProfile = asyncHandler(async (req, res) => {
-    const { bio, interests } = req.body;
+    const { bio, interests, preferredLanguage } = req.body;
     const user = await User.findById(req.user._id);
 
     if (user) {
         user.bio = bio !== undefined ? bio : user.bio;
         user.interests = interests || user.interests;
+        user.preferredLanguage = preferredLanguage || user.preferredLanguage;
         
         const updatedUser = await user.save();
         res.json({

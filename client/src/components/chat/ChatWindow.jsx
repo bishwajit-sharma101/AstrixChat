@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
+import Cookies from "js-cookie";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import { MoreVertical, Phone, Video, Languages, Trash2, ShieldBan, ShieldCheck, Loader2, Sparkles, Orbit, Activity, Zap, Hexagon, ArrowLeft, Check } from "lucide-react";
@@ -156,14 +157,73 @@ const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, 
 // ==================================================================================
 // 4. MAIN CHAT WINDOW EXPORT
 // ==================================================================================
+import { getSocket } from "../../socket";
+
 export default function ChatWindow({ 
-    chat, onSend, aiProcessing, currentUser, 
+    chat, onSend, aiProcessing, currentUser, setCurrentUser,
     onBlock, onUnblock, onClear, isOnline,
     onDeleteMessage, onLoadMoreMessages, hasMoreMessages, loadingMessages, onBack
 }) {
-    const [targetLang, setTargetLang] = useState("none"); 
+    const [targetLang, setTargetLang] = useState(currentUser?.preferredLanguage || "none"); 
     const scrollRef = useRef(null);
     const prevHeightRef = useRef(0);
+    const [isTargetTyping, setIsTargetTyping] = useState(false);
+    
+    // --- SOCKET TYPING LISTENERS ---
+    useEffect(() => {
+        const socket = getSocket();
+        if (!socket || !chat) return;
+        
+        setIsTargetTyping(false); // Reset when switching chats
+
+        const handleTypeStart = ({ fromUserId }) => {
+            if (fromUserId === chat.id) setIsTargetTyping(true);
+        };
+        const handleTypeStop = ({ fromUserId }) => {
+            if (fromUserId === chat.id) setIsTargetTyping(false);
+        };
+
+        socket.on("user-typing", handleTypeStart);
+        socket.on("user-stopped-typing", handleTypeStop);
+
+        return () => {
+            socket.off("user-typing", handleTypeStart);
+            socket.off("user-stopped-typing", handleTypeStop);
+        };
+    }, [chat?.id]);
+
+    const handleLanguageChange = async (newLang) => {
+        setTargetLang(newLang);
+        
+        // Persist to server
+        try {
+            const token = Cookies.get("token");
+            const res = await fetch("http://localhost:5000/api/v1/users/profile", {
+                method: "PUT",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}` 
+                },
+                body: JSON.stringify({ preferredLanguage: newLang })
+            });
+            const data = await res.json();
+            if (data.success && setCurrentUser) {
+                // Update global state and cookie
+                const updatedUser = { ...currentUser, preferredLanguage: newLang };
+                setCurrentUser(updatedUser);
+                Cookies.set("user", JSON.stringify(updatedUser), { expires: 7 });
+            }
+        } catch (err) {
+            console.error("Failed to persist language preference:", err);
+        }
+    };
+
+    const handleInputTyping = (isTyping) => {
+        const socket = getSocket();
+        if(!socket || !chat) return;
+        if(isTyping) socket.emit("typing-start", { toUserId: chat.id });
+        else socket.emit("typing-stop", { toUserId: chat.id });
+    };
 
     // Infinite Scroll Logic
     const handleScroll = (e) => {
@@ -194,7 +254,7 @@ export default function ChatWindow({
                 activeChat={chat} 
                 isOnline={isOnline} 
                 targetLang={targetLang} 
-                setTargetLang={setTargetLang} 
+                setTargetLang={handleLanguageChange} 
                 onClear={onClear} 
                 onBlock={onBlock} 
                 onUnblock={onUnblock} 
@@ -234,6 +294,23 @@ export default function ChatWindow({
                         targetLang={targetLang} 
                         onDeleteMessage={onDeleteMessage} 
                    />
+
+                   {/* Typing Indicator Bubble */}
+                   {isTargetTyping && (
+                       <div className="flex w-max max-w-[80%] items-end gap-2 mb-2">
+                           {/* Avatar */}
+                           <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden border border-white/5 bg-[#050508]/50">
+                                <img src={chat.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${chat.name}`} alt="Avatar" className="w-full h-full object-cover" />
+                           </div>
+                           <div className="bg-[#050508]/40 backdrop-blur-xl border border-white/5 rounded-2xl rounded-bl-sm px-4 py-3 shadow-lg">
+                               <div className="flex items-center gap-1.5 h-4">
+                                   <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-1.5 h-1.5 bg-brand-400 rounded-full" />
+                                   <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} className="w-1.5 h-1.5 bg-brand-400 rounded-full" />
+                                   <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} className="w-1.5 h-1.5 bg-brand-400 rounded-full" />
+                               </div>
+                           </div>
+                       </div>
+                   )}
                    
                    {/* AI Processing Indicator */}
                    {aiProcessing && (
@@ -254,6 +331,7 @@ export default function ChatWindow({
                    <MessageInput 
                         onSend={(msg) => onSend(msg, targetLang)} 
                         targetLangName={targetLang !== 'none' ? LANGUAGES.find(l => l.code === targetLang)?.name : null}
+                        onTyping={handleInputTyping}
                    />
                )}
             </div>

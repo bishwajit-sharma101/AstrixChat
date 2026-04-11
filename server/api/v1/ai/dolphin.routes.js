@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 router.post("/chat", async (req, res) => {
-    const { message, context } = req.body;
+    const { model = "reina", message, context } = req.body;
     if (!message && !context) return res.status(400).json({ success: false, error: "Missing message or context" });
 
     // Format context into messages array
@@ -43,7 +43,7 @@ router.post("/chat", async (req, res) => {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
-                model: "reina", 
+                model, 
                 messages: [
                     ...conversationHistory,
                     { role: "user", content: message } 

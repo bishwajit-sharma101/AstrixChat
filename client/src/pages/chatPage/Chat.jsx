@@ -132,6 +132,17 @@ export default function Chat() {
     }
 };
 
+  // --- ⚡ FIX: Instant Reordering ---
+  const moveUserToTop = useCallback((userId) => {
+    setUsers(prev => {
+        const index = prev.findIndex(u => (u._id || u.id) === userId);
+        if (index === -1) return prev; // Not in current loaded list, let it be
+        const updated = [...prev];
+        const [target] = updated.splice(index, 1);
+        return [target, ...updated];
+    });
+  }, []);
+
 
   // --- 2. MESSAGE MAPPER ---
   const mapMessage = (m, myId) => {
@@ -164,13 +175,16 @@ export default function Chat() {
 
     return {
         id: m._id || m.id || Date.now(),
+        uuid: m.uuid,
         textOriginal: m.content?.original || m.message || "", 
         content: m.content || { original: m.message, translations: {} }, 
         
         audioOriginal: reconstructedUrl, 
         audioOriginalBlob: reconstructedBlob,
-        attachmentUrl: attachmentUrl,
-        attachmentType: m.attachmentType,
+        attachmentUrl: attachmentUrl || m.media?.url,
+        attachmentType: m.attachmentType || m.media?.fileType,
+        
+        deliveryStatus: m.deliveryStatus || (m.isRead ? 'seen' : 'sent'),
 
         fromMe: (m.fromMe === true) ? true : isMe, 
         isRead: m.isRead || false,
@@ -234,6 +248,7 @@ export default function Chat() {
   };
 
   // --- 4. SEND MESSAGE (FIXED DB ERROR) ---
+  // --- 4. SEND MESSAGE (FIXED) ---
   const sendMessage = async (msgOrFile, targetLang) => {
     if (!activeChat) return;
     
@@ -260,43 +275,45 @@ export default function Chat() {
 
     const socket = getSocket();
     const currentUserId = currentUser?._id || currentUser?.id;
-    const tempId = Date.now(); 
+    // Generate UUID for Message Reliability Layer
+    const messageUuid = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2);
     
-    // File Handling
+    // File Handling via HTTP Upload instead of Base64
     const isFile = msgOrFile instanceof Blob || msgOrFile instanceof File;
     let fileType = null;
     let previewUrl = null;
-    let fileBase64 = null;
-    let mimeType = null;
+    let uploadedMediaData = null;
 
     if (isFile) {
         previewUrl = URL.createObjectURL(msgOrFile);
-        fileBase64 = await blobToBase64(msgOrFile);
-        mimeType = msgOrFile.type; 
-        
         if (msgOrFile.type.startsWith("image/")) fileType = "image";
         else if (msgOrFile.type.startsWith("video/")) fileType = "video";
         else if (msgOrFile.type.startsWith("audio/")) fileType = "audio";
         else fileType = "file";
+        
+        // Optimistic UI text
+        const formData = new FormData();
+        formData.append("media", msgOrFile);
+        try {
+            const res = await axios.post("http://localhost:5000/api/v1/messages/upload", formData, {
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "multipart/form-data" }
+            });
+            if (res.data.success) {
+                uploadedMediaData = { url: res.data.url, mimeType: res.data.mimeType, fileType };
+            }
+        } catch(e) {
+            console.error("Media upload failed", e);
+            alert("Media upload failed!");
+            return;
+        }
     }
 
-    // ⚡ CRITICAL FIX: Ensure 'message' payload is never empty string
-    // If it's a file, we send a descriptive string to satisfy "required: true" in DB
-    let textPayload = "";
-    if (isFile) {
-        if (fileType === 'image') textPayload = "📷 Image";
-        else if (fileType === 'video') textPayload = "🎥 Video";
-        else if (fileType === 'audio') textPayload = "🎤 Voice Message";
-        else textPayload = "📁 Attachment";
-    } else {
-        textPayload = msgOrFile;
-    }
+    let textPayload = isFile ? (fileType === 'image' ? "📷 Image" : fileType === 'audio' ? "🎤 Voice Message" : "📁 Attachment") : msgOrFile;
 
-    // Track activity
     trackEvent(`Sent a message to user '${activeChat.name}' with content: "${textPayload}"`);
 
     const newMsgObj = {
-        id: tempId, _id: tempId,
+        id: messageUuid, _id: messageUuid, uuid: messageUuid,
         textOriginal: textPayload,
         content: { original: textPayload, translations: {} },
         fromMe: true, fromUserId: currentUserId, toUserId: activeChat.id,
@@ -307,39 +324,27 @@ export default function Chat() {
         attachmentUrl: (fileType === 'image' || fileType === 'video') ? previewUrl : null,
         attachmentType: fileType,
         
-        metadata: { tempId }, isRead: false
+        deliveryStatus: 'sending', // Reliability Layer
+        isRead: false
     };
 
     setActiveChat((prev) => ({ ...prev, messages: [...prev.messages, newMsgObj] }));
-    setLastMessages(prev => ({ 
-        ...prev, 
-        [activeChat.id]: { 
-            text: textPayload, 
-            time: newMsgObj.ts, 
-            isRead: false, isOwn: true 
-        } 
-    }));
+    moveUserToTop(activeChat.id);
     
-    setUsers(prev => {
-        const index = prev.findIndex(u => u._id === activeChat.id);
-        if (index <= 0) return prev; 
-        const user = prev[index];
-        return [user, ...prev.filter(u => u._id !== activeChat.id)];
-    });
-
     if (socket) {
       socket.emit("private-message", {
+        uuid: messageUuid,
         toUserId: activeChat.id, 
-        fromUserId: currentUserId,
-        message: textPayload, // ⚡ Sending text payload to satisfy Mongoose
+        message: textPayload, 
         targetLang: targetLang, 
-        
-        originalAudioBase64: fileType === 'audio' ? fileBase64 : null,
-        attachmentBase64: (!fileType || fileType !== 'audio') ? fileBase64 : null,
-        attachmentType: fileType,
-        mimeType: mimeType, 
-        
-        metadata: { tempId }, 
+        media: uploadedMediaData,
+      }, (ack) => {
+          // ACK Received from server
+          setActiveChat(prev => {
+              if(!prev || prev.id !== activeChat.id) return prev;
+              const msgs = prev.messages.map(m => m.uuid === messageUuid ? { ...m, deliveryStatus: ack.success ? ack.deliveryStatus : 'failed', id: ack.messageId || m.id } : m);
+              return { ...prev, messages: msgs };
+          });
       });
     }
   };
@@ -359,6 +364,9 @@ export default function Chat() {
               autoRead = true;
           }
 
+          // Acknowledge receipt to server instantly
+          socket.emit("message-delivered", { uuid: payload.uuid, messageId: payload._id, senderId: fromUserId });
+
           setLastMessages(prev => ({
             ...prev,
             [otherId]: {
@@ -366,17 +374,21 @@ export default function Chat() {
                 isRead: false, isOwn: String(fromUserId) === String(myId)
             }
           }));
+          moveUserToTop(otherId);
 
           setActiveChat(prev => {
               if(!prev || !((prev.id === fromUserId) || (String(fromUserId) === String(myId) && prev.id === toUserId))) return prev;
               
-              const isDuplicate = prev.messages.some(m => (payload._id && m.id === payload._id) || (payload.metadata?.tempId && m.metadata?.tempId === payload.metadata.tempId));
+              const isDuplicate = prev.messages.some(m => (payload.uuid && m.uuid === payload.uuid) || (payload._id && m.id === payload._id));
               if (isDuplicate) return prev;
               
               const mapped = mapMessage(payload, myId);
               if (autoRead) mapped.isRead = true; 
+              mapped.deliveryStatus = 'delivered'; // Since we just received it
 
-              return { ...prev, messages: [...prev.messages, mapped] };
+              // STRICT SORTING: Always apply Server-Timestamp sorting prior to render
+              const strictlySortedMsgs = [...prev.messages, mapped].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+              return { ...prev, messages: strictlySortedMsgs };
           });
       };
 
@@ -384,16 +396,46 @@ export default function Chat() {
           if (activeChatIdRef.current === byUserId) {
               setActiveChat(prev => {
                   if(!prev) return prev;
-                  return { ...prev, messages: prev.messages.map(m => m.fromMe ? { ...m, isRead: true } : m) };
+                  return { ...prev, messages: prev.messages.map(m => m.fromMe ? { ...m, isRead: true, deliveryStatus: 'seen' } : m) };
               });
           }
       };
 
+      const deliveryHandler = ({ uuid }) => {
+          setActiveChat(prev => {
+              if(!prev) return prev;
+              return { ...prev, messages: prev.messages.map(m => m.uuid === uuid ? { ...m, deliveryStatus: 'delivered' } : m) };
+          });
+      };
+
+      const offlineSyncHandler = (msgs) => {
+          const myId = currentUser._id || currentUser.id;
+          msgs.forEach(payload => {
+              // Mark visually as delivered immediately upon sync
+              payload.deliveryStatus = 'delivered'; 
+              setActiveChat(prev => {
+                  if(!prev || prev.id !== payload.from) return prev;
+                  const isDuplicate = prev.messages.some(m => m.uuid === payload.uuid || m.id === payload._id);
+                  if (isDuplicate) return prev;
+                  
+                  // STRICT SORTING: Guarantee offline message floods don't jumble
+                  const strictlySortedMsgs = [...prev.messages, mapMessage(payload, myId)].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                  return { ...prev, messages: strictlySortedMsgs };
+              });
+              socket.emit("message-delivered", { uuid: payload.uuid, messageId: payload._id, senderId: payload.from });
+          });
+      };
+
       socket.on("private-message", msgHandler);
       socket.on("messages-read", readHandler);
+      socket.on("message-delivered", deliveryHandler);
+      socket.on("offline-messages", offlineSyncHandler);
+      
       return () => {
           socket.off("private-message", msgHandler);
           socket.off("messages-read", readHandler);
+          socket.off("message-delivered", deliveryHandler);
+          socket.off("offline-messages", offlineSyncHandler);
       };
   }, [currentUser]);
 
@@ -506,6 +548,7 @@ export default function Chat() {
                         hasMoreMessages={hasMoreMessages}
                         loadingMessages={isFetchingMessages}
                         onBack={() => setActiveChat(null)} 
+                        setCurrentUser={setCurrentUser}
                     />
                 ) : viewMode === "profile" ? (
                     <UserProfile 

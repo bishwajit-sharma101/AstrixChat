@@ -28,7 +28,7 @@ const getChatHistory = asyncHandler(async (req, res) => {
   .sort({ createdAt: -1 }) 
   .skip(skip)
   .limit(limit)
-  .select("from to content createdAt isRead"); // Added isRead
+  .lean(); 
 
   res.json({ success: true, messages: messages.reverse() });
 });
@@ -99,8 +99,16 @@ const markMessagesAsRead = asyncHandler(async (req, res) => {
         { from: senderId, to: myId, isRead: false },
         { $set: { isRead: true } }
     );
-
     res.json({ success: true });
+});
+
+// NEW: Upload media handler
+const uploadMedia = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+    const mediaUrl = `/uploads/${req.file.filename}`;
+    res.json({ success: true, url: mediaUrl, mimeType: req.file.mimetype });
 });
 
 module.exports = { 
@@ -109,5 +117,6 @@ module.exports = {
     cacheTranslation,
     deleteMessage,
     clearChat,
-    markMessagesAsRead
+    markMessagesAsRead,
+    uploadMedia
 };

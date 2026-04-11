@@ -3,7 +3,7 @@ import { Send, Paperclip, Smile, Mic, X, FileText, Image as ImageIcon, Film, Squ
 import { motion, AnimatePresence } from "framer-motion";
 import EmojiPicker from "emoji-picker-react";
 
-export default function MessageInput({ onSend, targetLangName }) {
+export default function MessageInput({ onSend, targetLangName, onTyping }) {
     // --- STATE ---
     const [message, setMessage] = useState("");
     const [showEmoji, setShowEmoji] = useState(false);
@@ -17,6 +17,7 @@ export default function MessageInput({ onSend, targetLangName }) {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const timerRef = useRef(null);
+    const typingTimeoutRef = useRef(null);
 
     // --- EFFECT: AUTO-RESIZE TEXTAREA ---
     useEffect(() => {
@@ -25,6 +26,18 @@ export default function MessageInput({ onSend, targetLangName }) {
             inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
         }
     }, [message]);
+
+    // --- HANDLER: TYPING ---
+    const handleTyping = (e) => {
+        setMessage(e.target.value);
+        if (onTyping) {
+            onTyping(true);
+            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => {
+                onTyping(false);
+            }, 1500);
+        }
+    };
 
     // --- HELPER: FORMAT TIME ---
     const formatDuration = (sec) => {
@@ -274,7 +287,7 @@ export default function MessageInput({ onSend, targetLangName }) {
                     <textarea
                         ref={inputRef}
                         value={message}
-                        onChange={(e) => setMessage(e.target.value)}
+                        onChange={handleTyping}
                         onKeyDown={handleKeyDown}
                         placeholder={targetLangName ? `Message (Translating to ${targetLangName})...` : "Type a message..."}
                         className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none py-3 px-2 max-h-32 min-h-[44px] resize-none custom-scrollbar leading-relaxed"

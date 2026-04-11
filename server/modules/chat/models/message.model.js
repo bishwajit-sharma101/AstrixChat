@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
+    uuid: {
+      type: String,
+      required: true,
+      unique: true // Perfect for client-side deduplication
+    },
     from: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -12,24 +17,33 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
+    deliveryStatus: {
+      type: String,
+      enum: ['sent', 'delivered', 'seen'],
+      default: 'sent'
+    },
+    // Legacy support to prevent breaking current app prior to migration
     isRead: {
       type: Boolean,
       default: false
     },
-    // UPDATED: Structured content for multi-language support
     content: {
       original: {
         type: String,
         required: true,
         trim: true
       },
-      // Map of language codes to translated strings
-      // e.g., { "hi": "नमस्ते", "es": "Hola" }
       translations: {
         type: Map,
         of: String,
         default: {}
       }
+    },
+    // Media URLs uploaded via HTTP (not socket base64)
+    media: {
+      url: { type: String },
+      mimeType: { type: String },
+      fileType: { type: String, enum: ['image', 'video', 'audio', 'file', null], default: null }
     }
   },
   { timestamps: true }
