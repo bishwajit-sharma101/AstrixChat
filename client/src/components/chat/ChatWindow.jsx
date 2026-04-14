@@ -81,7 +81,7 @@ const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, 
                     <h2 className="text-white font-bold text-lg tracking-tight leading-none mb-1">{activeChat.name}</h2>
                     <div className="text-[10px] font-mono tracking-[0.15em] uppercase flex items-center gap-2 opacity-70">
                         {isOnline ? (
-                            <><Activity size={10} className="text-green-400"/> <span className="text-green-400 font-semibold">Signal Active</span></>
+                            <><Activity size={10} className="text-green-400"/> <span className="text-green-400 font-semibold">Online</span></>
                         ) : (
                             <><Orbit size={10} className="text-slate-500"/> <span className="text-slate-500">Offline</span></>
                         )}
@@ -139,11 +139,11 @@ const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, 
                                 exit={{ opacity: 0, y: 10, scale: 0.95 }} 
                                 className="absolute right-0 top-full mt-2 w-52 bg-[#050508]/95 border border-white/10 rounded-xl shadow-2xl py-1 z-50 backdrop-blur-2xl"
                             >
-                                <button onClick={onClear} className="w-full text-left px-5 py-3 text-xs font-medium text-slate-300 hover:bg-white/5 flex gap-3 items-center transition-colors"><Trash2 size={14}/> Clear Neural Log</button>
+                                <button onClick={onClear} className="w-full text-left px-5 py-3 text-xs font-medium text-slate-300 hover:bg-white/5 flex gap-3 items-center transition-colors"><Trash2 size={14}/> Clear Chat</button>
                                 {activeChat.isBlocked ? (
-                                    <button onClick={onUnblock} className="w-full text-left px-5 py-3 text-xs font-medium text-green-400 hover:bg-green-500/10 flex gap-3 items-center transition-colors"><ShieldCheck size={14}/> Resume Signal</button>
+                                    <button onClick={onUnblock} className="w-full text-left px-5 py-3 text-xs font-medium text-green-400 hover:bg-green-500/10 flex gap-3 items-center transition-colors"><ShieldCheck size={14}/> Unblock User</button>
                                 ) : (
-                                    <button onClick={onBlock} className="w-full text-left px-5 py-3 text-xs font-medium text-red-400 hover:bg-red-500/10 flex gap-3 items-center transition-colors"><ShieldBan size={14}/> Terminate Link</button>
+                                    <button onClick={onBlock} className="w-full text-left px-5 py-3 text-xs font-medium text-red-400 hover:bg-red-500/10 flex gap-3 items-center transition-colors"><ShieldBan size={14}/> Block User</button>
                                 )}
                             </motion.div>
                         )}
@@ -283,7 +283,7 @@ export default function ChatWindow({
                    {/* Session Start Label */}
                    <div className="flex justify-center py-8 opacity-60">
                        <div className="px-5 py-1.5 rounded-full bg-white/[0.02] border border-white/5 text-[10px] text-slate-500 font-mono tracking-[0.2em] uppercase shadow-sm backdrop-blur-sm">
-                           Encrypted Channel Established
+                           Chat started
                        </div>
                    </div>
 
@@ -315,7 +315,7 @@ export default function ChatWindow({
                    {/* AI Processing Indicator */}
                    {aiProcessing && (
                        <div className="ml-4 flex items-center gap-3 text-xs text-brand-400 font-mono animate-pulse">
-                           <Sparkles size={14} /> <span>Decrypting incoming stream...</span>
+                           <Sparkles size={14} /> <span>AI is thinking...</span>
                        </div>
                    )}
                 </div>
@@ -325,7 +325,7 @@ export default function ChatWindow({
             <div className="p-4 md:p-6 border-t border-white/5 bg-[#050508]/60 backdrop-blur-md z-20">
                {chat.isBlocked ? (
                    <div className="p-4 bg-red-500/5 border border-red-500/10 text-red-400 text-center text-xs font-mono rounded-xl tracking-widest flex items-center justify-center gap-2">
-                       <ShieldBan size={16}/> LINK TERMINATED BY USER
+                       <ShieldBan size={16}/> USER BLOCKED
                    </div>
                ) : (
                    <MessageInput 

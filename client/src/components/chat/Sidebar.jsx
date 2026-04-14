@@ -121,7 +121,7 @@ export default function Sidebar({
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                             </span>
                             <span className="text-[10px] text-brand-300 font-mono tracking-[0.2em] uppercase opacity-80 truncate">
-                                Uplink Stable
+                                Online
                             </span>
                         </div>
                     </div>
@@ -156,7 +156,7 @@ export default function Sidebar({
                     </div>
                     <input 
                         className="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3.5 text-sm text-white placeholder:text-slate-600 focus:border-brand-500/50 focus:bg-black/40 focus:shadow-[0_0_20px_rgba(139,92,246,0.1)] outline-none transition-all duration-300" 
-                        placeholder="Scan neural frequencies..." 
+                        placeholder="Search contacts..." 
                         value={searchTerm} 
                         onChange={(e) => onSearchChange(e.target.value)} 
                     />
@@ -178,7 +178,7 @@ export default function Sidebar({
                             <div className="p-3 rounded-full bg-white/5 border border-white/5">
                                 <Search size={20} />
                             </div>
-                            <p className="text-xs uppercase tracking-widest font-mono">No signals found</p>
+                            <p className="text-xs uppercase tracking-widest font-mono">No contacts found</p>
                         </div>
                     )}
 
@@ -242,7 +242,7 @@ export default function Sidebar({
                                             </>
                                         ) : (
                                             <span className="italic opacity-40 text-slate-500 flex items-center gap-1">
-                                                <Sparkles size={10} /> Initialize uplink...
+                                                <Sparkles size={10} /> Start a conversation...
                                             </span>
                                         )}
                                     </div>
@@ -285,14 +285,14 @@ export default function Sidebar({
                             onClick={(e) => { e.stopPropagation(); onDeleteChat(contextMenu.userId); setContextMenu(null); }}
                             className="w-full text-left px-4 py-3 text-xs font-medium text-red-400 hover:bg-red-500/10 flex gap-3 items-center transition-colors"
                         >
-                            <Trash2 size={14}/> Delete Frequency
+                            <Trash2 size={14}/> Delete Chat
                         </button>
                         <div className="h-px bg-white/5" />
                         <button 
                             onClick={(e) => { e.stopPropagation(); onBlockUser(contextMenu.userId); setContextMenu(null); }}
                             className="w-full text-left px-4 py-3 text-xs font-medium text-slate-300 hover:bg-white/5 flex gap-3 items-center transition-colors"
                         >
-                            <ShieldBan size={14}/> Block Signal
+                            <ShieldBan size={14}/> Block User
                         </button>
                     </motion.div>
                 )}
