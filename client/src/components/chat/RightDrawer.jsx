@@ -96,7 +96,7 @@ const CompanionCharacter = ({ state = "idle" }) => {
               x="75" y="90" width="12" height="12" rx="6"
               fill="white"
               animate={isThinking 
-                ? { height: [12, 4, 12], y: [90, 94, 90] }
+                ? { height: [12, 6, 12], y: [0, 2, 0] }
                 : { height: [12, 12, 12, 12, 0, 12, 12] }
               }
               transition={{ duration: isThinking ? 0.4 : 5, repeat: Infinity, times: [0, 0.1, 0.2, 0.8, 0.85, 0.9, 1] }}
@@ -106,7 +106,7 @@ const CompanionCharacter = ({ state = "idle" }) => {
               x="113" y="90" width="12" height="12" rx="6"
               fill="white"
               animate={isThinking 
-                ? { height: [12, 4, 12], y: [90, 94, 90] }
+                ? { height: [12, 6, 12], y: [0, 2, 0] }
                 : { height: [12, 12, 12, 12, 0, 12, 12] }
               }
               transition={{ duration: isThinking ? 0.4 : 5, repeat: Infinity, times: [0, 0.1, 0.2, 0.8, 0.85, 0.9, 1], delay: 0.1 }}
@@ -137,10 +137,10 @@ const CompanionCharacter = ({ state = "idle" }) => {
               key={i}
               r={2 + Math.random() * 2}
               fill={i % 2 === 0 ? "#ec4899" : "#fcd34d"}
-              initial={{ x: 100, y: 100, opacity: 0 }}
+              initial={{ cx: 100, cy: 100, opacity: 0 }}
               animate={{
-                x: 100 + (Math.cos(i * 90) * 80),
-                y: 100 + (Math.sin(i * 90) * 80),
+                cx: [100, 100 + (Math.cos(i * 90) * 80)],
+                cy: [100, 100 + (Math.sin(i * 90) * 80)],
                 opacity: [0, 1, 0],
                 scale: [0, 1.5, 0]
               }}
