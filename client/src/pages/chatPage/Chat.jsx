@@ -4,7 +4,7 @@ import Sidebar from "../../components/chat/Sidebar";
 import ChatWindow from "../../components/chat/ChatWindow";
 import RightDrawer from "../../components/chat/RightDrawer";
 import PublicFeed from "../../components/chat/PublicFeed"; 
-import UserProfile from "../../components/chat/UserProfile";
+import MemberProfile from "../../components/chat/MemberProfile";
 import { getSocket } from "../../socket";
 import Cookies from "js-cookie";
 import { usePublicFeed } from "../../hooks/usePublicFeed";
@@ -49,6 +49,7 @@ export default function Chat() {
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiReply, setAiReply] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [profileUserId, setProfileUserId] = useState(null);
   
   // Pagination
   const [hasMoreUsers, setHasMoreUsers] = useState(true);
@@ -482,6 +483,12 @@ export default function Chat() {
       setRightDrawerOpen(true);
   };
 
+  const handleViewProfile = (userId) => {
+      const cleanId = (typeof userId === 'object' && userId !== null) ? (userId._id || userId.id) : userId;
+      setProfileUserId(String(cleanId || (currentUser?._id || currentUser?.id)));
+      setViewMode("profile");
+  };
+
   const handleAddCommentWrapper = async (postId, text) => {
       await addComment(postId, text);
       setActivePostForComments(prev => {
@@ -529,6 +536,7 @@ export default function Chat() {
                     onAvatarChange={handleAvatarChange}
                     onDeleteChat={handleDeleteChat}
                     onBlockUser={handleBlockUser}
+                    onViewProfile={handleViewProfile}
                 />
             </div>
             
@@ -549,13 +557,19 @@ export default function Chat() {
                         loadingMessages={isFetchingMessages}
                         onBack={() => setActiveChat(null)} 
                         setCurrentUser={setCurrentUser}
+                        onViewProfile={handleViewProfile}
                     />
                 ) : viewMode === "profile" ? (
-                    <UserProfile 
-                        currentUser={currentUser} 
-                        onStartChat={handleStartChatFromFeed} 
+                    <MemberProfile 
+                        currentUser={currentUser}
+                        targetUserId={profileUserId || currentUser?._id || currentUser?.id}
+                        onStartChat={(id) => {
+                             const user = users.find(u => (u._id || u.id) === id);
+                             if(user) handleSelectChat(user);
+                        }} 
                         onOpenComments={handleOpenComments} 
                         onAvatarChange={handleAvatarChange}
+                        onBack={() => setViewMode(profileUserId === (currentUser?._id || currentUser?.id) ? "chat" : "feed")}
                     />
                 ) : (
                     <PublicFeed 
@@ -566,7 +580,7 @@ export default function Chat() {
                         onToggleLike={toggleLike}
                         onStartChat={handleStartChatFromFeed} 
                         onOpenComments={handleOpenComments} 
-                        onViewProfile={() => setViewMode("profile")}
+                        onViewProfile={(id) => handleViewProfile(id || currentUser?._id || currentUser?.id)}
                     />
                 )}
             </div>

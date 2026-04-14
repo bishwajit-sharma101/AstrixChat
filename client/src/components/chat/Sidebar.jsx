@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Search, Sparkles, Zap, Globe, MessageSquare, Check, CheckCheck, Loader2, Trash2, ShieldBan, Camera, Settings, Eye } from "lucide-react";
+import { Search, Sparkles, Zap, Globe, MessageSquare, Check, CheckCheck, Loader2, Trash2, ShieldBan, Camera, Settings, Eye, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,7 +20,8 @@ export default function Sidebar({
     currentUser = null,
     onAvatarChange = () => {},
     onBlockUser = () => {}, 
-    onDeleteChat = () => {} 
+    onDeleteChat = () => {},
+    onViewProfile = () => {}
 }) {
     const fileInputRef = useRef(null);
     const navigate = useNavigate();
@@ -111,7 +112,7 @@ export default function Sidebar({
                             <h1 className="font-bold text-lg tracking-tight text-white truncate leading-tight">
                                 {currentUser?.name || "Neural Node"}
                             </h1>
-                            <button onClick={() => onViewChange("profile")} className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                             <button onClick={() => onViewProfile(currentUser?._id || currentUser?.id)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
                                 <Settings size={18} />
                             </button>
                         </div>
@@ -184,14 +185,14 @@ export default function Sidebar({
 
                     {/* Chat Items */}
                     {chats.map((u) => {
-                        const isOnline = onlineUsers.includes(u._id);
-                        const isActive = activeChatId === u._id;
-                        const lastMsg = lastMessages[u._id];
+                        const isOnline = onlineUsers.includes(u._id || u.id);
+                        const isActive = activeChatId === (u._id || u.id);
+                        const lastMsg = lastMessages[u._id || u.id];
 
                         return (
                             <motion.button
-                                key={u._id}
-                                layoutId={`chat-item-${u._id}`}
+                                key={u._id || u.id}
+                                layoutId={`chat-item-${u._id || u.id}`}
                                 onClick={() => onSelectChat(u)}
                                 onContextMenu={(e) => handleContextMenu(e, u._id)} 
                                 whileHover={{ scale: 1.01, backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
@@ -286,6 +287,12 @@ export default function Sidebar({
                             className="w-full text-left px-4 py-3 text-xs font-medium text-red-400 hover:bg-red-500/10 flex gap-3 items-center transition-colors"
                         >
                             <Trash2 size={14}/> Delete Chat
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onViewProfile(contextMenu.userId); setContextMenu(null); }}
+                            className="w-full text-left px-4 py-3 text-xs font-medium text-slate-300 hover:bg-white/5 flex gap-3 items-center transition-colors"
+                        >
+                            <UserIcon size={14}/> View Profile
                         </button>
                         <div className="h-px bg-white/5" />
                         <button 

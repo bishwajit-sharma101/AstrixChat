@@ -65,6 +65,7 @@ const voicevoxRoutes = require("./voicevox.routes");
 const queen3Routes = require("./queen3.routes");
 const reinaGeminiRoutes = require("./reina-gemini.routes");
 const ashTranslatorRoutes = require("./ashTranslator.routes");
+const auraRoutes = require("./aura.routes");
 
 // Apply middleware
 router.use("/translate_text/ash", protect, limiter, ashTranslatorRoutes);
@@ -77,5 +78,6 @@ router.use("/voicevox", protect, limiter, voicevoxRoutes);
 router.use("/queen3", queen3Routes);
 router.use("/reina-gemini", reinaGeminiRoutes);
 router.use("/ash", ashTranslatorRoutes);
+router.use("/aura", auraRoutes);
 
 module.exports = router;

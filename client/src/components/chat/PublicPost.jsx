@@ -3,12 +3,12 @@ import { motion } from 'framer-motion';
 import { MessageCircle, Heart, MoreHorizontal, Zap, Play, Trash2 } from 'lucide-react';
 import Cookies from 'js-cookie';
 
-const PublicPost = ({ post, onStartChat, onOpenComments, onDelete, onLike }) => {
+const PublicPost = ({ post, onStartChat, onOpenComments, onDelete, onLike, onViewProfile }) => {
   const currentUser = Cookies.get('user') ? JSON.parse(Cookies.get('user')) : null;
   const preferredLang = currentUser?.preferredLanguage || 'en';
 
   const currentUserId = currentUser && (currentUser.id || currentUser._id);
-  const isAuthor = currentUserId === post.author.id;
+  const isAuthor = String(currentUserId) === String(post.author.id || post.author._id);
   const isLiked = post.likedBy?.includes(currentUserId);
 
   let displayContent = post.content?.original || '';
@@ -31,7 +31,10 @@ const PublicPost = ({ post, onStartChat, onOpenComments, onDelete, onLike }) => 
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-3">
-        <div className="flex gap-3 items-center cursor-pointer hover:opacity-80">
+        <div 
+          onClick={() => onViewProfile && onViewProfile(post.author.id || post.author._id)}
+          className="flex gap-3 items-center cursor-pointer hover:opacity-80 transition-opacity"
+        >
           <div className="relative flex-shrink-0 w-10 h-10">
             <img 
               src={post.author.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author.name}`} 
@@ -113,7 +116,7 @@ const PublicPost = ({ post, onStartChat, onOpenComments, onDelete, onLike }) => 
         </div>
 
         <button 
-          onClick={() => onStartChat(post.author.id, post.content.original)}
+          onClick={() => onStartChat(post.author.id || post.author._id, post.content.original)}
           className="flex items-center gap-2 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/20 rounded-lg text-[11px] font-medium text-brand-300 transition-all active:scale-95"
         >
           <Zap size={12} className="fill-current" />

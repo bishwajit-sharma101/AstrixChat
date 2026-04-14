@@ -45,7 +45,8 @@ const PublicFeed = ({ posts, isLoading, onCreatePost, onDeletePost, onToggleLike
                 onDelete={onDeletePost}
                 onLike={() => onToggleLike(post.id)}
                 onStartChat={() => handleStartChat(post.author.id, post.content.original)} 
-                onOpenComments={() => onOpenComments(post)} // Pass specific post to open comments
+                onOpenComments={() => onOpenComments(post)}
+                onViewProfile={onViewProfile}
               />
             ))}
 

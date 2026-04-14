@@ -118,4 +118,20 @@ const updateProfile = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { getAllUsers, blockUser, unblockUser, deleteAccount, updateProfile };
+// NEW: Get Public Profile
+const getPublicProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id)
+        .select("name avatar bio interests lastSeen createdAt isPublic");
+
+    if (!user) {
+        res.status(404);
+        throw new Error("User not found");
+    }
+
+    res.json({
+        success: true,
+        user
+    });
+});
+
+module.exports = { getAllUsers, blockUser, unblockUser, deleteAccount, updateProfile, getPublicProfile };

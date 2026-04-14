@@ -4,7 +4,7 @@ import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
 import Cookies from "js-cookie";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
-import { MoreVertical, Phone, Video, Languages, Trash2, ShieldBan, ShieldCheck, Loader2, Sparkles, Orbit, Activity, Zap, Hexagon, ArrowLeft, Check } from "lucide-react";
+import { MoreVertical, Phone, Video, Languages, Trash2, ShieldBan, ShieldCheck, Loader2, Sparkles, Orbit, Activity, Zap, Hexagon, ArrowLeft, Check, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ==================================================================================
@@ -53,7 +53,7 @@ const EmptyState = () => (
 // ==================================================================================
 // 3. THE GLASS HEADER (With Language Selector Logic)
 // ==================================================================================
-const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, onBlock, onUnblock, onBack }) => {
+const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, onBlock, onUnblock, onBack, onViewProfile, currentUser }) => {
     const [menu, setMenu] = useState(false);
     const [langMenu, setLangMenu] = useState(false);
     
@@ -61,33 +61,32 @@ const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, 
         <div className="h-20 px-4 md:px-8 flex items-center justify-between border-b border-white/5 bg-[#050508]/40 backdrop-blur-xl sticky top-0 z-30 shadow-sm">
             
             {/* Left: Info */}
-            <div className="flex items-center gap-4">
-                <button onClick={onBack} className="lg:hidden p-2 -ml-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-                    <ArrowLeft size={20} />
-                </button>
+                <div 
+                  className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => onViewProfile && onViewProfile(activeChat.id || activeChat._id)}
+                >
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-brand-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        {/* Fallback to DiceBear if no avatar */}
+                        <img 
+                            src={activeChat.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat.name}`} 
+                            className="w-10 h-10 rounded-full border border-white/10 relative object-cover" 
+                            alt="Avatar" 
+                        />
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-[#050508] rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-slate-600'}`} />
+                    </div>
 
-                <div className="relative group cursor-pointer">
-                    <div className="absolute inset-0 bg-brand-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    {/* Fallback to DiceBear if no avatar */}
-                    <img 
-                        src={activeChat.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activeChat.name}`} 
-                        className="w-10 h-10 rounded-full border border-white/10 relative object-cover" 
-                        alt="Avatar" 
-                    />
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-[#050508] rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-slate-600'}`} />
-                </div>
-
-                <div>
-                    <h2 className="text-white font-bold text-lg tracking-tight leading-none mb-1">{activeChat.name}</h2>
-                    <div className="text-[10px] font-mono tracking-[0.15em] uppercase flex items-center gap-2 opacity-70">
-                        {isOnline ? (
-                            <><Activity size={10} className="text-green-400"/> <span className="text-green-400 font-semibold">Online</span></>
-                        ) : (
-                            <><Orbit size={10} className="text-slate-500"/> <span className="text-slate-500">Offline</span></>
-                        )}
+                    <div>
+                        <h2 className="text-white font-bold text-lg tracking-tight leading-none mb-1">{activeChat.name}</h2>
+                        <div className="text-[10px] font-mono tracking-[0.15em] uppercase flex items-center gap-2 opacity-70">
+                            {isOnline ? (
+                                <><Activity size={10} className="text-green-400"/> <span className="text-green-400 font-semibold">Online</span></>
+                            ) : (
+                                <><Orbit size={10} className="text-slate-500"/> <span className="text-slate-500">Offline</span></>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
 
             {/* Right: Controls */}
             <div className="flex items-center gap-2 md:gap-4">
@@ -129,6 +128,10 @@ const ChatHeader = ({ activeChat, isOnline, targetLang, setTargetLang, onClear, 
                 <button className="p-2.5 hover:bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors"><Phone size={18} /></button>
                 <button className="p-2.5 hover:bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors hidden md:block"><Video size={18} /></button>
                 
+                <button onClick={() => onViewProfile(currentUser?._id || currentUser?.id)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                    <Settings size={18} />
+                </button>
+
                 <div className="relative">
                     <button onClick={() => setMenu(!menu)} className="p-2.5 hover:bg-white/5 rounded-xl text-slate-400 hover:text-white transition-colors"><MoreVertical size={18} /></button>
                     <AnimatePresence>
@@ -162,7 +165,7 @@ import { getSocket } from "../../socket";
 export default function ChatWindow({ 
     chat, onSend, aiProcessing, currentUser, setCurrentUser,
     onBlock, onUnblock, onClear, isOnline,
-    onDeleteMessage, onLoadMoreMessages, hasMoreMessages, loadingMessages, onBack
+    onDeleteMessage, onLoadMoreMessages, hasMoreMessages, loadingMessages, onBack, onViewProfile
 }) {
     const [targetLang, setTargetLang] = useState(currentUser?.preferredLanguage || "none"); 
     const scrollRef = useRef(null);
@@ -255,10 +258,12 @@ export default function ChatWindow({
                 isOnline={isOnline} 
                 targetLang={targetLang} 
                 setTargetLang={handleLanguageChange} 
-                onClear={onClear} 
+                onClear={onClear}
                 onBlock={onBlock} 
                 onUnblock={onUnblock} 
                 onBack={onBack} 
+                onViewProfile={onViewProfile}
+                currentUser={currentUser}
             />
 
             {/* 2. Messages Area */}
