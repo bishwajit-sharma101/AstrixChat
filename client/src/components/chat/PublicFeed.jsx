@@ -59,15 +59,21 @@ const PublicFeed = ({ posts, isLoading, onCreatePost, onDeletePost, onToggleLike
         </div>
       </div>
 
-      {/* Bottom Nav Bar */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-zinc-900/80 backdrop-blur-xl border border-white/10 p-2 rounded-full flex gap-4 items-center shadow-[0_0_30px_rgba(0,0,0,0.5)] z-40">
-          <button onClick={() => setIsComposerOpen(true)} className="p-3 bg-brand-500 hover:bg-brand-400 text-white rounded-full transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)]">
-              <Plus size={22} strokeWidth={3} />
-          </button>
-          <button onClick={onViewProfile} className="p-3 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors mr-1">
-              <User size={22} />
-          </button>
-      </div>
+      {/* Floating Action Button - Pinned to Bottom Right */}
+      <button 
+        onClick={() => setIsComposerOpen(true)} 
+        className="fixed bottom-8 right-8 w-14 h-14 bg-brand-500 hover:bg-brand-400 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_30px_rgba(139,92,246,0.5)] active:scale-90 z-50 group"
+      >
+          <Plus size={28} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" />
+      </button>
+
+      {/* Profile Shortcut */}
+      <button 
+        onClick={onViewProfile} 
+        className="fixed bottom-8 right-28 w-14 h-14 bg-zinc-900/80 backdrop-blur-xl border border-white/10 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-all shadow-lg z-50 hover:bg-zinc-800"
+      >
+          <User size={24} />
+      </button>
 
       {/* Composer Modal Overlays */}
       <AnimatePresence>
