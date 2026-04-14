@@ -134,4 +134,28 @@ const getPublicProfile = asyncHandler(async (req, res) => {
     });
 });
 
-module.exports = { getAllUsers, blockUser, unblockUser, deleteAccount, updateProfile, getPublicProfile };
+// NEW: Upload Avatar
+const uploadAvatar = asyncHandler(async (req, res) => {
+    if (!req.file) {
+        res.status(400);
+        throw new Error("No file uploaded");
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        res.status(404);
+        throw new Error("User not found");
+    }
+
+    // Save relative path
+    const relativePath = `/uploads/${req.file.filename}`;
+    user.avatar = `${req.protocol}://${req.get("host")}${relativePath}`;
+    await user.save();
+
+    res.json({
+        success: true,
+        avatarUrl: user.avatar
+    });
+});
+
+module.exports = { getAllUsers, blockUser, unblockUser, deleteAccount, updateProfile, getPublicProfile, uploadAvatar };

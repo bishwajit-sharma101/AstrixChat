@@ -153,14 +153,41 @@ const MemberProfile = ({ currentUser, targetUserId, onStartChat, onOpenComments,
 
               {/* Identity Row */}
               <div className="px-8 md:px-12 pb-10 flex flex-col md:flex-row items-center md:items-end gap-8 -mt-20 md:-mt-24 relative z-10">
-                  <div className="relative flex-shrink-0">
-                      <div className="w-40 h-40 md:w-48 md:h-48 rounded-[2.5rem] border-[6px] border-[#050508] overflow-hidden shadow-2xl relative z-10">
-                         <img src={profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`} className="w-full h-full object-cover" alt="avatar" />
-                      </div>
-                      {profile.isOnline && (
-                         <div className="absolute bottom-2 right-2 w-7 h-7 bg-emerald-500 rounded-full border-4 border-[#050508] z-20 shadow-lg shadow-emerald-500/20" />
-                      )}
-                  </div>
+                  <div className="relative mb-16 group">
+                  <div className={`absolute -inset-10 bg-gradient-to-tr ${auraGradient} rounded-full blur-[100px] opacity-20 group-hover:opacity-40 transition-opacity duration-1000`} />
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    className="relative z-10 w-40 h-40 md:w-48 md:h-48 rounded-[2.5rem] border-[6px] border-[#050508] overflow-hidden shadow-2xl overflow-hidden"
+                  >
+                     <img src={profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`} className="w-full h-full object-cover" alt="avatar" />
+                     
+                     {/* 📷 AVATAR UPLOAD OVERLAY */}
+                     {isOwnProfile && isEditing && (
+                        <div 
+                           onClick={() => document.getElementById('avatar-upload-input').click()}
+                           className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center cursor-pointer group/upload"
+                        >
+                           <Camera size={32} className="text-white group-hover/upload:scale-110 transition-transform" />
+                           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white mt-2">Update Core</span>
+                           <input 
+                              id="avatar-upload-input"
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={(e) => {
+                                 const file = e.target.files[0];
+                                 if (file) onAvatarChange(file);
+                              }}
+                           />
+                        </div>
+                     )}
+                  </motion.div>
+                  {profile.isOnline && (
+                     <div className="absolute bottom-2 right-2 w-7 h-7 bg-emerald-500 rounded-full border-4 border-[#050508] z-20 shadow-lg shadow-emerald-500/20" />
+                  )}
+              </div>
 
                   <div className="flex-1 text-center md:text-left pt-4 space-y-2">
                       <div className="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6">

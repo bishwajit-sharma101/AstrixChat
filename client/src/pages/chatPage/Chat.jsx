@@ -449,7 +449,7 @@ export default function Chat() {
         const tempUser = { ...currentUser, avatar: previewUrl };
         setCurrentUser(tempUser); 
         const res = await axios.post("http://localhost:5000/api/v1/users/avatar", formData, {
-            headers: { "Authorization": `Bearer ${token}`, "Content-Type": "multipart/form-data" }
+            headers: { "Authorization": `Bearer ${token}` }
         });
         if (res.data.success) {
             const finalUser = { ...currentUser, avatar: res.data.avatarUrl };

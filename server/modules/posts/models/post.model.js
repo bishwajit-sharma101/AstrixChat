@@ -18,7 +18,7 @@ const postSchema = new mongoose.Schema({
   },
   targetLanguages: [{ type: String }],
   mediaUrl: String,
-  mediaType: { type: String, enum: ['image', 'video', 'text'], default: 'text' },
+  mediaType: { type: String, enum: ['image', 'video', 'text', 'file'], default: 'text' },
   originLanguage: { type: String, default: 'en' },
   likes: { type: Number, default: 0 },
   likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

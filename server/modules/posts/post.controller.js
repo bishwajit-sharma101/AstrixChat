@@ -38,18 +38,26 @@ exports.getUserPosts = async (req, res) => {
 
 exports.createPost = async (req, res) => {
   try {
-    const { content, targetLanguages, mediaUrl, mediaType } = req.body;
-    const authorId = req.user.id;
+    const { content, targetLanguages } = req.body;
+    let { mediaUrl, mediaType } = req.body;
+    const authorId = req.user._id;
     const cleanContent = xss(content || "");
 
-    // ⚡ FIX: Limit languages to prevent API abuse/billing spikes
-    const MAX_LANGUAGES = 5;
-    const sanitizedLangs = (targetLanguages || []).slice(0, MAX_LANGUAGES);
+    // Handle File Upload from Multer
+    if (req.file) {
+      const relativePath = `/uploads/${req.file.filename}`;
+      mediaUrl = `${req.protocol}://${req.get("host")}${relativePath}`;
+      
+      // Auto-detect type
+      if (req.file.mimetype.startsWith('video/')) mediaType = 'video';
+      else if (req.file.mimetype.startsWith('image/')) mediaType = 'image';
+      else mediaType = 'file';
+    }
 
     const post = new Post({
       author: authorId,
       content: { original: cleanContent, translations: {} },
-      targetLanguages: sanitizedLangs,
+      targetLanguages: targetLanguages ? (Array.isArray(targetLanguages) ? targetLanguages : [targetLanguages]) : [],
       mediaUrl,
       mediaType: mediaType || 'text',
       originLanguage: 'en'
@@ -61,9 +69,9 @@ exports.createPost = async (req, res) => {
     res.status(201).json({ success: true, post: populatedPost });
 
     // ⚡ FIX: Offload translation to background (Resilience & Scalability)
-    if (sanitizedLangs.length > 0 && cleanContent) {
+    if (post.targetLanguages && post.targetLanguages.length > 0 && cleanContent) {
         setImmediate(async () => {
-            const promises = sanitizedLangs.map(async (lang) => {
+            const promises = post.targetLanguages.map(async (lang) => {
                 try {
                     const response = await ai.models.generateContent({
                         model: "gemini-2.0-flash",

@@ -24,16 +24,21 @@ export const usePublicFeed = () => {
   const createPost = async (newPostData) => {
     try {
       const token = Cookies.get('token');
-      // If we had media upload endpoint, we would upload newPostData.media here
       
-      const payload = {
-        content: newPostData.content,
-        targetLanguages: newPostData.targetLanguages || []
-      };
+      const formData = new FormData();
+      formData.append('content', newPostData.content);
+      if (newPostData.media) {
+        formData.append('media', newPostData.media);
+      }
+      if (newPostData.targetLanguages) {
+        newPostData.targetLanguages.forEach(lang => formData.append('targetLanguages', lang));
+      }
 
       trackEvent(`Created a new public post: "${newPostData.content.substring(0, 50)}..."`);
-      const res = await axios.post('http://localhost:5000/api/v1/posts', payload, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await axios.post('http://localhost:5000/api/v1/posts', formData, {
+        headers: { 
+            Authorization: `Bearer ${token}`
+        }
       });
 
       if (res.data.success) {
