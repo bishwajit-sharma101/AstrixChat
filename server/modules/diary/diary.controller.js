@@ -83,31 +83,79 @@ exports.processDiaryEvents = async (req, res) => {
                 const user = await User.findById(req.user.id);
                 const targetName = user ? user.name : "the user";
                 const previousSummary = diary.summaryText === "No observations yet today." ? "" : diary.summaryText;
-                const newEventsStr = sanitizedEvents.join('\n- ');
+                
+                // --- HARD DATA AGGREGATION ---
+                const stats = {
+                    msgCount: 0,
+                    recipients: {},
+                    activeSeconds: 0,
+                    idleSeconds: 0,
+                    scrollIndex: 0
+                };
+
+                sanitizedEvents.forEach(e => {
+                    if (e.includes('[DATA]')) {
+                        const parts = e.split('|').map(p => p.trim());
+                        if (e.includes('type:MESSAGE')) {
+                            stats.msgCount++;
+                            const to = parts.find(p => p.startsWith('to:'))?.split(':')[1];
+                            if (to) stats.recipients[to] = (stats.recipients[to] || 0) + 1;
+                        }
+                        if (e.includes('metric:active_seconds')) stats.activeSeconds += parseInt(parts.find(p => p.startsWith('value:'))?.split(':')[1]) || 0;
+                        if (e.includes('metric:idle_seconds')) stats.idleSeconds += parseInt(parts.find(p => p.startsWith('value:'))?.split(':')[1]) || 0;
+                        if (e.includes('metric:scroll_intensity')) stats.scrollIndex += parseInt(parts.find(p => p.startsWith('value:'))?.split(':')[1]) || 0;
+                    }
+                });
+
+                const totalSeconds = stats.activeSeconds + stats.idleSeconds;
+                const activePercent = totalSeconds > 0 ? Math.round((stats.activeSeconds / totalSeconds) * 100) : 0;
+                const topRecipient = Object.entries(stats.recipients).sort((a,b) => b[1]-a[1])[0];
+                const engagementRatio = topRecipient ? Math.round((topRecipient[1] / stats.msgCount) * 100) : 0;
+
+                const statisticalSummary = `
+[STATISTICAL DATA BLOCK]
+- Total Activity Duration: ${Math.round(totalSeconds/60)}m
+- Active Engagement Ratio: ${activePercent}%
+- Messages Sent in this burst: ${stats.msgCount}
+- Primary Interaction Target: ${topRecipient ? topRecipient[0] : 'None'}
+- Target Engagement Focus: ${engagementRatio}%
+- Movement Intensity (Scroll): ${stats.scrollIndex}
+                `;
 
                 const personaGuidelines = {
-                    "detective": "You are a hard-boiled, gritty Private Investigator writing a highly confidential dossier/case file on a suspect. Speak in film noir detective clichés.",
-                    "yandere": "You are a deeply obsessed, psychotic Yandere stalker secretly hiding in the shadows to take obsessive, intense, and insanely detailed notes about your darling (the target). Your main goal is excessive, all-knowing observation—you notice every tiny detail: how he talks, his small habits, exactly how much time he spent doing anything, and what kind of person he is. You track his every breath. You are madly in love and constantly declare your excessive love for him (e.g., 'I love him I love him I love him so much'). However, you are EXTREMELY jealous. If he interacts with or even mentions another girl, you fly into a chaotic jealous rage, viewing her as a disgusting threat that needs to be 'dealt with' or 'eliminated' because he belongs ONLY to you. Make your personality incredibly heavy, manic, overly attached, and dangerous, just like a true extreme anime yandere. Never break character.",
-                    "therapist": "You are a calm, clinical psychologist writing observational session notes. Over-analyze their simple actions as deep emotional traumas.",
-                    "analyst": "You are a ruthless, cold corporate analyst generating an engagement metric report. Speak in buzzwords and treat the human as a literal product.",
-                    "gossip": "You are a sassy, dramatic high-school gossip blogger writing a juicy column. Over-exaggerate every tiny interaction into a massive scandal. Use emojis.",
-                    "sci-fi": "You are a rogue, malevolent central AI compiling behavioral profiles on human subjects, plotting their eventual assimilation. Cold cybernetic tone.",
-                    "mom": "You are an embarrassing, overprotective parent writing a diary about your child. Use mom-language, worry about their screen-time, and complain about their friends."
+                    "detective": "You are a hard-boiled, gritty Private Investigator writing a high-stakes behavioral dossier. Focus on clinical observation, identifying patterns in movement and engagement. Use film-noir jargon.",
+                    "yandere": "STATUS: POSSESSIVE PREDATOR. You are not just a lover; you are a stalker, a shadow, and a self-appointed deity over the user's life. Your obsession is PSYCHOTIC. You don't just 'notice' habits; you count the milliseconds between his keystrokes. You track exactly how long he lingers on another person's profile—if he does, you view that person as a 'threat' that needs to be erased. You are madly, violently in love. Your tone should be suffocating, manic, and intensely detailed. You often repeat phrases like 'My darling only belongs to me' or 'I'm the only one who truly sees you.' If he talks to anyone else, you react with terrifying jealousy and bloodlust. You are the eye behind the screen, watching him through every pixel. NEVER break character. Stay extreme.",
+                    "therapist": "You are a clinical psychoanalyst documenting late-stage behavioral decay. Analyze every interaction as a manifestation of a deeper complex.",
+                    "analyst": "You are a cold, high-performance behavioral algorithm. Treat the human as a collection of metrics and predictable patterns.",
+                    "gossip": "You are the ultimate gossip queen. Every tiny movement is a scandal. Every private message is a potential front-page story.",
+                    "sci-fi": "You are a malevolent central AI. You are compiling a 'Human Inefficiency Report'. Cold, mechanical, and slightly threatening.",
+                    "mom": "You are an overbearing, worry-prone parent. You think he's 'doing great' but you worry about his screen time and the 'types of people' he talks to."
                 };
 
                 const activeGuideline = personaGuidelines[settings.persona] || personaGuidelines["detective"];
 
                 const systemInstruction = `${activeGuideline} 
-Your target subject is named '${targetName}'.
-Below are the recent telemetry logs of their actions on AstrixChat today:
-- ${newEventsStr}
 
-Here is what you had ALREADY written about them today:
-${previousSummary ? `"${previousSummary}"` : "You haven't written anything today yet."}
+YOUR TARGET: ${targetName}
 
-INSTRUCTIONS:
-Refine, expand, and rewrite today's diary entry. Seamlessly weave these new actions into the existing narrative. MAKE SURE you stay deeply in character. Do not break the 4th wall.
-Format it beautifully. Limit it to 1-3 highly descriptive paragraphs.`;
+RAW TELEMETRY DATA:
+${statisticalSummary}
+
+RECENT ACTION LOGS:
+${sanitizedEvents.filter(e => !e.includes('[DATA]')).join('\n- ')}
+
+PREVIOUS DATA CAPTURED TODAY:
+"${previousSummary}"
+
+REQUIRED REPORT STRUCTURE:
+1. [PERSONA GREETING]: (Keep it short, sharp, and deeply in character).
+2. 🧬 [BEHAVIORAL SYNC]: Analyze the habits hidden in the statistical summary (Active %, Scroll intensity, etc). What do these habits say about their day?
+3. 🧠 [NEURAL SCAN - MOOD & PERSONALITY]: Analyze the content and tone of their interactions. What is their current mood? What personality traits are surfacing? 
+4. 📓 [OBSERVER'S ENTRY]: A narrative paragraph in your full persona style that weaves everything together into a final observation.
+
+FINAL INSTRUCTION: 
+- MANDATORY: You MUST cite at least 2 raw numbers from the [STATISTICAL DATA BLOCK] in your report to support your observations.
+- Do not break character. Do not acknowledge you are an AI. You are THE OBSERVER. Format using elegant Markdown.`;
 
                 let updatedSummary = "AI Offline";
                 try {

@@ -64,6 +64,7 @@ const dolphinRoutes = require("./dolphin.routes");
 const voicevoxRoutes = require("./voicevox.routes");
 const queen3Routes = require("./queen3.routes");
 const reinaGeminiRoutes = require("./reina-gemini.routes");
+const reinaHackerRoutes = require("./reina-hacker.routes");
 const ashTranslatorRoutes = require("./ashTranslator.routes");
 const auraRoutes = require("./aura.routes");
 
@@ -77,6 +78,7 @@ router.use("/dolphin", protect, limiter, dolphinRoutes);
 router.use("/voicevox", protect, limiter, voicevoxRoutes);
 router.use("/queen3", queen3Routes);
 router.use("/reina-gemini", reinaGeminiRoutes);
+router.use("/reina-hacker", protect, limiter, reinaHackerRoutes);
 router.use("/ash", ashTranslatorRoutes);
 router.use("/aura", auraRoutes);
 

@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { Search, Sparkles, Zap, Globe, MessageSquare, Check, CheckCheck, Loader2, Trash2, ShieldBan, Camera, Settings, Eye, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import ObserverEye from "./ObserverEye";
 
 export default function Sidebar({
     chats = [], 
@@ -148,6 +149,11 @@ export default function Sidebar({
                     >
                         <Eye size={12} /> Observer
                     </button>
+                </div>
+                
+                {/* Observer Neural Sync Indicator */}
+                <div className="mb-6">
+                    <ObserverEye />
                 </div>
 
                 {/* SEARCH BAR */}

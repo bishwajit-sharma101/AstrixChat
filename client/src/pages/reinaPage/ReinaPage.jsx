@@ -158,6 +158,13 @@ const ReinaPage = () => {
     const [displayedThought, setDisplayedThought] = useState("");
     const idleTimerRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const [agentAction, setAgentAction] = useState("");
+
+    // Continuous Voice Mode State
+    const [isVoiceMode, setIsVoiceMode] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef(null);
+    const speechTimeoutRef = useRef(null);
 
     // Enhanced Idle Animation State Machine
     const lastInteractionRef = useRef(Date.now());
@@ -247,6 +254,84 @@ const ReinaPage = () => {
             typeThought(first);
         }, 30000);
     }, [typeThought]);
+
+    // ─── CONTINUOUS VOICE MODE LOGIC ───
+    useEffect(() => {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            console.warn("Speech Recognition API not supported in this browser.");
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = (e) => {
+            if (e.error !== 'no-speech') console.error("Speech Recognition Error:", e.error);
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            const currentText = finalTranscript || interimTranscript;
+            if (currentText.trim()) {
+                setInput(currentText);
+
+                if (speechTimeoutRef.current) clearTimeout(speechTimeoutRef.current);
+                speechTimeoutRef.current = setTimeout(() => {
+                    recognition.stop(); 
+                    if (currentText.trim()) {
+                        // We must invoke the form submission equivalent here
+                        document.getElementById('reina-hidden-submit')?.click();
+                    }
+                }, 800);
+            }
+        };
+
+        recognitionRef.current = recognition;
+
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+        };
+    }, []);
+
+    // Re-enable listening after Reina stops talking
+    useEffect(() => {
+        if (isVoiceMode && !isTalking && !isLoading && !isListening) {
+            setTimeout(() => {
+                if (recognitionRef.current && isVoiceMode) {
+                    try { recognitionRef.current.start(); } catch (e) {}
+                }
+            }, 500);
+        }
+    }, [isTalking, isLoading, isVoiceMode, isListening]);
+
+    const toggleVoiceMode = () => {
+        setIsVoiceMode(prev => {
+            const newState = !prev;
+            if (newState && recognitionRef.current && !isTalking && !isLoading) {
+                try { recognitionRef.current.start(); } catch (e) {}
+            } else if (!newState && recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+            return newState;
+        });
+    };
 
     // Precise Psychological Loading Sequence
     useEffect(() => {
@@ -628,6 +713,7 @@ const ReinaPage = () => {
         // Reset state for new turn
         currentEmotionRef.current = "neutral";
         setEmotion("neutral");
+        setAgentAction("");
 
         // Jealousy Detection
         const femaleKeywords = ["girl", "her", "she", "woman", "sakura", "hinata", "miku", "rin", "bitch", "cheating"];
@@ -646,9 +732,12 @@ const ReinaPage = () => {
                 `${m.sender === 'user' ? 'Darling' : 'Reina'}: ${m.text}`
             ).join('\n');
 
-            const apiEndpoint = selectedModel === "reina-gemini" 
-                ? 'http://localhost:5000/api/v1/ai/reina-gemini/chat'
-                : 'http://localhost:5000/api/v1/ai/dolphin/chat';
+            let apiEndpoint = 'http://localhost:5000/api/v1/ai/dolphin/chat';
+            if (selectedModel === "reina-gemini") {
+                apiEndpoint = 'http://localhost:5000/api/v1/ai/reina-gemini/chat';
+            } else if (selectedModel === "gemma4:e4b") {
+                apiEndpoint = 'http://localhost:5000/api/v1/ai/reina-hacker/chat';
+            }
 
             const response = await fetch(apiEndpoint, {
                 method: 'POST',
@@ -710,8 +799,13 @@ const ReinaPage = () => {
                 if (!hasParsedAnim) {
                     const animMatch = fullText.match(/\[anim=([^\]]+)\]/);
                     if (animMatch) {
-                        const a = animMatch[1].trim();
-                        setAnimation(a);
+                        const requestedAnim = animMatch[1];
+                        const allowedAnims = ["idle1", "idle2", "VRMA_07", "nod", "shake", "angry", "happy", "sadIdle"];
+                        if (allowedAnims.includes(requestedAnim)) {
+                            setAnimation(requestedAnim);
+                        } else {
+                            setAnimation("angry"); // Safe fallback
+                        }
                         lastInteractionRef.current = Date.now();
                         hasParsedAnim = true;
                     }
@@ -726,10 +820,20 @@ const ReinaPage = () => {
                     }
                 }
 
+                // Agent Action UI Trigger
+                if (fullText.includes("[ACTION:SEARCHING]")) {
+                    setAgentAction("Searching the internet...");
+                } else if (fullText.includes("[ACTION:EXECUTING]")) {
+                    setAgentAction("Executing terminal command...");
+                } else if (fullText.includes("[ACTION:TYPING]")) {
+                    setAgentAction("Taking over terminal...");
+                }
+
                 // 2. Clear tags, thoughts, and translations 
                 let uiText = fullText
-                    .replace(/<(thought|think)>[\s\S]*?<\/\1>/gi, '') // Hide thinking block
-                    .replace(/<(thought|think)>[\s\S]*/gi, '') // Hide partial thinking block
+                    .replace(/<(thought|think|execute|search|type)>[\s\S]*?<\/(thought|think|execute|search|type)>/gi, '') // Hide thinking/execute/search/type block
+                    .replace(/<(thought|think|execute|search|type)>[\s\S]*/gi, '') // Hide partial block
+                    .replace(/\[ACTION:[A-Z_]+\]/g, '')
                     .replace(/\[emotion=[^\]]+\]/g, '')
                     .replace(/\[anim=[^\]]+\]/g, '')
                     .replace(/\[voice=[^\]]+\]/g, '')
@@ -758,7 +862,11 @@ const ReinaPage = () => {
                 const sentenceEndMatch = sentenceBuffer.match(/[^。！？!?.…~♥\n]+[。！？!?.…~♥\n]/);
                 if (sentenceEndMatch) {
                     let sentence = sentenceEndMatch[0];
-                    let cleanSentence = sentence.replace(/\[[^\]]+\]/g, '').trim();
+                    let cleanSentence = sentence
+                        .replace(/<(thought|think|execute|search|type)>[\s\S]*?<\/(thought|think|execute|search|type)>/gi, '')
+                        .replace(/<(thought|think|execute|search|type)>[\s\S]*/gi, '')
+                        .replace(/\[[^\]]+\]/g, '')
+                        .trim();
                     if (cleanSentence) {
                         synthesizeAndQueue(cleanSentence, token);
                     }
@@ -772,8 +880,9 @@ const ReinaPage = () => {
             
             // Get the actual latest text from the loop result
             let finalUiText = fullText
-                .replace(/<(thought|think)>[\s\S]*?<\/\1>/gi, '')
-                .replace(/<(thought|think)>[\s\S]*/gi, '')
+                .replace(/<(thought|think|execute|search|type)>[\s\S]*?<\/(thought|think|execute|search|type)>/gi, '')
+                .replace(/<(thought|think|execute|search|type)>[\s\S]*/gi, '')
+                .replace(/\[ACTION:[A-Z_]+\]/g, '')
                 .replace(/\[emotion=[^\]]+\]/g, '')
                 .replace(/\[anim=[^\]]+\]/g, '')
                 .replace(/\[voice=[^\]]+\]/g, '')
@@ -785,7 +894,11 @@ const ReinaPage = () => {
 
             // Final catch-all for remaining buffer
             if (sentenceBuffer.trim()) {
-                let cleanFinal = sentenceBuffer.replace(/\[[^\]]+\]/g, '').trim();
+                let cleanFinal = sentenceBuffer
+                    .replace(/<(thought|think|execute|search|type)>[\s\S]*?<\/(thought|think|execute|search|type)>/gi, '')
+                    .replace(/<(thought|think|execute|search|type)>[\s\S]*/gi, '')
+                    .replace(/\[[^\]]+\]/g, '')
+                    .trim();
                 if (cleanFinal) synthesizeAndQueue(cleanFinal, token);
             }
 
@@ -950,6 +1063,7 @@ const ReinaPage = () => {
                             {isLoading && !displayedAiMsg ? (
                                 <div className="reina-thinking-dots">
                                     <span /><span /><span />
+                                    {agentAction && <div className="agent-action-text">{agentAction}</div>}
                                 </div>
                             ) : (
                                 <p className="speech-text-dynamic">
@@ -1109,6 +1223,27 @@ const ReinaPage = () => {
             {/* Bottom centered input — glassmorphism */}
             <div className="reina-bottom-input">
                 <form className="reina-input-glass" onSubmit={handleSend}>
+                    <button
+                        type="button"
+                        className={`voice-mode-toggle ${isVoiceMode ? 'active' : ''} ${isListening ? 'listening' : ''}`}
+                        onClick={toggleVoiceMode}
+                        title="Continuous Voice Mode"
+                        style={{
+                            background: isVoiceMode ? (isListening ? 'rgba(255,50,50,0.5)' : 'rgba(100,200,100,0.3)') : 'rgba(255,255,255,0.1)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '36px',
+                            height: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            marginRight: '10px',
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        {isListening ? '🎙️' : '🎤'}
+                    </button>
                     <input
                         type="text"
                         value={input}
@@ -1127,6 +1262,7 @@ const ReinaPage = () => {
                             <Send size={16} />
                         )}
                     </button>
+                    <button type="submit" id="reina-hidden-submit" style={{ display: 'none' }}></button>
                 </form>
             </div>
             {/* Total Privacy Breach Loading Overlays — FULL PAGE FIXED POSITION */}

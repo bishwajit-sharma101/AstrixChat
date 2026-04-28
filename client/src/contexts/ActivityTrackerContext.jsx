@@ -8,8 +8,10 @@ export const useActivityTracker = () => useContext(ActivityTrackerContext);
 
 export const ActivityTrackerProvider = ({ children }) => {
     const [settings, setSettings] = useState({ enabled: false, persona: 'detective', cycleMinutes: 1 });
+    const [metrics, setMetrics] = useState({ activeTime: 0, idleTime: 0, scrollDistance: 0 });
     const eventQueue = useRef([]);
     const timerRef = useRef(null);
+    const lastActive = useRef(Date.now());
 
     // Fetch initial settings
     useEffect(() => {
@@ -30,9 +32,40 @@ export const ActivityTrackerProvider = ({ children }) => {
         fetchSettings();
     }, []);
 
+    // Automated Surveillance Listeners
+    useEffect(() => {
+        if (!settings.enabled) return;
+
+        const handleInteraction = () => {
+            const now = Date.now();
+            const elapsed = now - lastActive.current;
+            
+            if (elapsed > 5000) {
+                setMetrics(m => ({ ...m, idleTime: m.idleTime + elapsed }));
+            } else {
+                setMetrics(m => ({ ...m, activeTime: m.activeTime + elapsed }));
+            }
+            lastActive.current = now;
+        };
+
+        const handleScroll = () => {
+            setMetrics(m => ({ ...m, scrollDistance: m.scrollDistance + Math.abs(window.scrollY) }));
+            handleInteraction();
+        };
+
+        window.addEventListener('mousemove', handleInteraction);
+        window.addEventListener('keydown', handleInteraction);
+        window.addEventListener('scroll', handleScroll);
+
+        return () => {
+            window.removeEventListener('mousemove', handleInteraction);
+            window.removeEventListener('keydown', handleInteraction);
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [settings.enabled]);
+
     const trackEvent = (eventStr) => {
         if (!settings.enabled) return;
-        console.log("OBSERVER LOGGED:", eventStr);
         eventQueue.current.push(eventStr);
     };
 
@@ -44,10 +77,23 @@ export const ActivityTrackerProvider = ({ children }) => {
         }
 
         const flushEvents = async () => {
-            if (eventQueue.current.length === 0) return;
+            const now = Date.now();
+            const currentActive = metrics.activeTime + (now - lastActive.current);
             
-            const eventsToSend = [...eventQueue.current];
-            eventQueue.current = []; // Clear queue immediately
+            // Structured Data Batching
+            const metaBatch = [
+                ...eventQueue.current,
+                `[DATA] metric:active_seconds | value:${Math.round(currentActive/1000)}`,
+                `[DATA] metric:idle_seconds | value:${Math.round(metrics.idleTime/1000)}`,
+                `[DATA] metric:scroll_intensity | value:${Math.round(metrics.scrollDistance / 100)}`,
+                `[ACTION] heartbeat | session_sync:true`
+            ];
+
+            if (metaBatch.length === 0) return;
+            
+            const eventsToSend = [...metaBatch];
+            eventQueue.current = [];
+            setMetrics({ activeTime: 0, idleTime: 0, scrollDistance: 0 }); // Reset for next cycle
 
             try {
                 const token = Cookies.get('token');
@@ -57,7 +103,6 @@ export const ActivityTrackerProvider = ({ children }) => {
                 );
             } catch (err) {
                 console.error("Diary flush fail", err);
-                // Put them back if failed (simplified, just prepend to not drop logs)
                 eventQueue.current = [...eventsToSend, ...eventQueue.current];
             }
         };

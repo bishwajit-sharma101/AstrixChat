@@ -311,7 +311,7 @@ export default function Chat() {
 
     let textPayload = isFile ? (fileType === 'image' ? "📷 Image" : fileType === 'audio' ? "🎤 Voice Message" : "📁 Attachment") : msgOrFile;
 
-    trackEvent(`Sent a message to user '${activeChat.name}' with content: "${textPayload}"`);
+    trackEvent(`[DATA] type:MESSAGE | to:${activeChat.name} | len:${textPayload.length} | preview:"${textPayload.substring(0, 20)}..."`);
 
     const newMsgObj = {
         id: messageUuid, _id: messageUuid, uuid: messageUuid,
